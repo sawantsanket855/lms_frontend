@@ -17,7 +17,9 @@ import {
   Award,
   PlusCircle,
   Map,
-  Plus
+  Plus,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useCourseStore } from '../../src/store/courseStore';
@@ -32,6 +34,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllCourses, setShowAllCourses] = useState(false);
 
   const loadData = async () => {
     try {
@@ -157,11 +160,20 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Courses ({courses.length})</Text>
-            <TouchableOpacity onPress={() => router.push('/admin/course-editor')}>
-              <Plus size={24} color="#6366f1" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              {courses.length > 5 && (
+                <TouchableOpacity onPress={() => setShowAllCourses(!showAllCourses)}>
+                  <Text style={{ color: '#6366f1', fontWeight: '600' }}>
+                    {showAllCourses ? 'Show Less' : 'Show More'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => router.push('/admin/course-editor')}>
+                <Plus size={24} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
           </View>
-          {courses.slice(0, 5).map((course) => (
+          {courses.slice(0, showAllCourses ? undefined : 5).map((course) => (
             <TouchableOpacity
               key={course.id}
               style={styles.listItem}

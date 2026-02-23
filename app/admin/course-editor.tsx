@@ -30,6 +30,8 @@ import {
   CloudUpload,
   Info,
   Edit,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
@@ -61,6 +63,8 @@ export default function CourseEditor() {
     addModule,
     updateModule,
     deleteModule,
+    reorderModules,
+    reorderSessions,
     sessions,
     fetchSessions,
     createSession,
@@ -101,6 +105,40 @@ export default function CourseEditor() {
   const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
   const [newQuizTitle, setNewQuizTitle] = useState('');
 
+  // Custom Confirmation Modal State
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  } | null>(null);
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }) => {
+    setConfirmModalConfig(config);
+    setConfirmModalVisible(true);
+  };
+
+  const showNotification = (title: string, message: string, style: 'primary' | 'destructive' = 'primary') => {
+    showConfirm({
+      title,
+      message,
+      confirmText: 'OK',
+      confirmStyle: style,
+      onConfirm: () => { },
+      singleButton: true
+    });
+  };
+
   useEffect(() => {
     if (id && id !== 'undefined') {
       loadCourse();
@@ -123,7 +161,7 @@ export default function CourseEditor() {
       setModules(course.modules);
       setIsPublished(course.is_published);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load course');
+      showNotification('Error', 'Failed to load course', 'destructive');
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +169,7 @@ export default function CourseEditor() {
 
   const handleSave = async () => {
     if (!title || !description) {
-      Alert.alert('Error', 'Please fill in title and description');
+      showNotification('Error', 'Please fill in title and description', 'destructive');
       return;
     }
 
@@ -148,17 +186,17 @@ export default function CourseEditor() {
 
       if (courseId) {
         await updateCourse(courseId, courseData as any);
-        Alert.alert('Success', 'Course updated successfully');
+        showNotification('Success', 'Course updated successfully');
       } else {
         const newCourse = await createCourse(courseData as any);
         setCourseId(newCourse.id);
         router.setParams({ id: newCourse.id });
         loadCourse(newCourse.id);
-        Alert.alert('Success', 'Course created successfully');
+        showNotification('Success', 'Course created successfully');
       }
     } catch (error: any) {
       const msg = error.response?.data?.detail || error.message || 'Failed to save course';
-      Alert.alert('Error', msg);
+      showNotification('Error', msg, 'destructive');
     } finally {
       setIsSaving(false);
     }
@@ -192,13 +230,13 @@ export default function CourseEditor() {
       }
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to pick file');
+      showNotification('Error', 'Failed to pick file', 'destructive');
     }
   };
 
   const handleCreateQuiz = async () => {
     if (!newQuizTitle.trim()) {
-      Alert.alert('Error', 'Please enter a quiz title');
+      showNotification('Error', 'Please enter a quiz title', 'destructive');
       return;
     }
 
@@ -211,21 +249,21 @@ export default function CourseEditor() {
       setSelectedQuizId(quiz.id);
       setIsCreatingQuiz(false);
       setNewQuizTitle('');
-      Alert.alert('Success', 'Quiz created and selected');
+      showNotification('Success', 'Quiz created and selected');
     } catch (error: any) {
       const msg = error.response?.data?.detail || error.message || 'Failed to create quiz';
-      Alert.alert('Error', msg);
+      showNotification('Error', msg, 'destructive');
     }
   };
 
   const handleCreateSession = async () => {
     if (!sessionName.trim() || !sessionDuration.trim()) {
-      Alert.alert('Error', 'Please fill in name and duration');
+      showNotification('Error', 'Please fill in name and duration', 'destructive');
       return;
     }
 
     if (sessionType === 'quiz' && !selectedQuizId) {
-      Alert.alert('Error', 'Please select a quiz');
+      showNotification('Error', 'Please select a quiz', 'destructive');
       return;
     }
 
@@ -260,10 +298,10 @@ export default function CourseEditor() {
 
       if (isEditingSession && currentSessionId) {
         await updateSession(currentSessionId, formData);
-        Alert.alert('Success', 'Session updated successfully');
+        showNotification('Success', 'Session updated successfully');
       } else {
         await createSession(formData);
-        Alert.alert('Success', 'Session added successfully');
+        showNotification('Success', 'Session added successfully');
       }
 
       setShowSessionModal(false);
@@ -271,7 +309,7 @@ export default function CourseEditor() {
     } catch (error: any) {
       console.error(error);
       const msg = error.response?.data?.detail || error.message || 'Failed to save session';
-      Alert.alert('Error', msg);
+      showNotification('Error', msg, 'destructive');
     } finally {
       setIsAddingSession(false);
     }
@@ -305,21 +343,21 @@ export default function CourseEditor() {
   };
 
   const handleDeleteSession = (sessionId: string, moduleId: string) => {
-    Alert.alert('Delete Session', 'Are you sure you want to delete this session?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteSession(sessionId, courseId!, moduleId);
-          } catch (error: any) {
-            const msg = error.response?.data?.detail || error.message || 'Failed to delete session';
-            Alert.alert('Error', msg);
-          }
-        },
+    console.log('handleDeleteSession called:', sessionId, moduleId);
+    showConfirm({
+      title: 'Delete Session',
+      message: 'Are you sure you want to delete this session?',
+      confirmText: 'Delete',
+      confirmStyle: 'destructive',
+      onConfirm: async () => {
+        try {
+          await deleteSession(sessionId, courseId!, moduleId);
+        } catch (error: any) {
+          const msg = error.response?.data?.detail || error.message || 'Failed to delete session';
+          showNotification('Error', msg, 'destructive');
+        }
       },
-    ]);
+    });
   };
 
   const getModuleStats = (moduleId: string) => {
@@ -348,7 +386,7 @@ export default function CourseEditor() {
 
   const handleAddModule = () => {
     if (!courseId) {
-      Alert.alert('Error', 'Please save the course first');
+      showNotification('Error', 'Please save the course first', 'destructive');
       return;
     }
     setModuleTitle('');
@@ -366,7 +404,7 @@ export default function CourseEditor() {
 
   const handleConfirmAddModule = async () => {
     if (!moduleTitle.trim()) {
-      Alert.alert('Error', 'Please enter a module title');
+      showNotification('Error', 'Please enter a module title', 'destructive');
       return;
     }
 
@@ -398,22 +436,53 @@ export default function CourseEditor() {
   };
 
   const handleDeleteModule = async (moduleId: string) => {
-    Alert.alert('Delete Module', 'Are you sure you want to delete this module?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteModule(courseId!, moduleId);
-            loadCourse(courseId!);
-          } catch (error: any) {
-            const msg = error.response?.data?.detail || error.message || 'Failed to delete module';
-            Alert.alert('Error', msg);
-          }
-        },
+    console.log('handleDeleteModule called for:', moduleId);
+    showConfirm({
+      title: 'Delete Module',
+      message: 'Are you sure you want to delete this module?',
+      confirmText: 'Delete',
+      confirmStyle: 'destructive',
+      onConfirm: async () => {
+        try {
+          await deleteModule(courseId!, moduleId);
+          loadCourse(courseId!);
+        } catch (error: any) {
+          const msg = error.response?.data?.detail || error.message || 'Failed to delete module';
+          showNotification('Error', msg, 'destructive');
+        }
       },
-    ]);
+    });
+  };
+
+  const handleMoveModule = async (index: number, direction: 'up' | 'down') => {
+    console.log('handleMoveModule called:', index, direction);
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= modules.length) return;
+
+    const newModules = [...modules];
+    [newModules[index], newModules[newIndex]] = [newModules[newIndex], newModules[index]];
+
+    setModules(newModules);
+    try {
+      await reorderModules(courseId!, newModules.map(m => m.id));
+    } catch (error: any) {
+      showNotification('Error', 'Failed to reorder modules', 'destructive');
+      loadCourse(courseId!);
+    }
+  };
+
+  const handleMoveSession = async (moduleId: string, index: number, direction: 'up' | 'down') => {
+    const moduleSessions = [...(sessions[moduleId] || [])];
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= moduleSessions.length) return;
+
+    [moduleSessions[index], moduleSessions[newIndex]] = [moduleSessions[newIndex], moduleSessions[index]];
+
+    try {
+      await reorderSessions(courseId!, moduleId, moduleSessions.map(s => s.id));
+    } catch (error: any) {
+      showNotification('Error', 'Failed to reorder sessions', 'destructive');
+    }
   };
 
   if (isLoading) {
@@ -573,40 +642,68 @@ export default function CourseEditor() {
                   const isExpanded = expandedModule === module.id;
                   return (
                     <View key={module.id} style={styles.moduleCard}>
-                      <TouchableOpacity
-                        style={styles.moduleHeaderRow}
-                        onPress={() => toggleModuleSelection(module.id)}
-                      >
-                        <View style={styles.moduleNumber}>
-                          <Text style={styles.moduleNumberText}>{index + 1}</Text>
-                        </View>
-                        <View style={styles.moduleInfo}>
-                          <Text style={styles.moduleTitle}>{module.title}</Text>
-                          <Text style={styles.moduleMeta}>
-                            {stats.count} Sessions · {stats.time} min
-                          </Text>
-                        </View>
+                      <View style={styles.moduleHeaderRow}>
+                        <TouchableOpacity
+                          style={styles.moduleHeaderInfo}
+                          onPress={() => toggleModuleSelection(module.id)}
+                        >
+                          <View style={styles.moduleNumber}>
+                            <Text style={styles.moduleNumberText}>{index + 1}</Text>
+                          </View>
+                          <View style={styles.moduleInfo}>
+                            <Text style={styles.moduleTitle}>{module.title}</Text>
+                            <Text style={styles.moduleMeta}>
+                              {stats.count} Sessions · {stats.time} min
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
                         <View style={styles.moduleActions}>
+                          <TouchableOpacity
+                            style={styles.reorderIconButton}
+                            onPress={() => handleMoveModule(index, 'up')}
+                            disabled={index === 0}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            delayPressIn={0}
+                          >
+                            <ArrowUp size={18} color={index === 0 ? "#cbd5e1" : "#6366f1"} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.reorderIconButton}
+                            onPress={() => handleMoveModule(index, 'down')}
+                            disabled={index === modules.length - 1}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            delayPressIn={0}
+                          >
+                            <ArrowDown size={18} color={index === modules.length - 1 ? "#cbd5e1" : "#6366f1"} />
+                          </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.deleteIconButton}
                             onPress={() => handleEditModule(module)}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            delayPressIn={0}
                           >
                             <Edit size={18} color="#6366f1" />
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.deleteIconButton}
                             onPress={() => handleDeleteModule(module.id)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            delayPressIn={0}
                           >
                             <Trash2 size={18} color="#ef4444" />
                           </TouchableOpacity>
-                          {isExpanded ? (
-                            <ChevronUp size={20} color="#64748b" />
-                          ) : (
-                            <ChevronDown size={20} color="#64748b" />
-                          )}
+                          <TouchableOpacity
+                            onPress={() => toggleModuleSelection(module.id)}
+                            style={styles.actionIcon}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp size={20} color="#64748b" />
+                            ) : (
+                              <ChevronDown size={20} color="#64748b" />
+                            )}
+                          </TouchableOpacity>
                         </View>
-                      </TouchableOpacity>
+                      </View>
 
                       {isExpanded && (
                         <View style={styles.sessionsContainer}>
@@ -644,16 +741,44 @@ export default function CourseEditor() {
                                 </View>
                                 <View style={styles.sessionActionRow}>
                                   <TouchableOpacity
+                                    onPress={() => {
+                                      console.log('Reorder session up');
+                                      handleMoveSession(module.id, (sessions[module.id] || []).indexOf(session), 'up');
+                                    }}
+                                    disabled={(sessions[module.id] || []).indexOf(session) === 0}
+                                    style={styles.actionIcon}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    delayPressIn={0}
+                                  >
+                                    <ArrowUp size={16} color={(sessions[module.id] || []).indexOf(session) === 0 ? "#cbd5e1" : "#6366f1"} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      console.log('Reorder session down');
+                                      handleMoveSession(module.id, (sessions[module.id] || []).indexOf(session), 'down');
+                                    }}
+                                    disabled={(sessions[module.id] || []).indexOf(session) === (sessions[module.id] || []).length - 1}
+                                    style={styles.actionIcon}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    delayPressIn={0}
+                                  >
+                                    <ArrowDown size={16} color={(sessions[module.id] || []).indexOf(session) === (sessions[module.id] || []).length - 1 ? "#cbd5e1" : "#6366f1"} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
                                     onPress={() => handleEditSession(session)}
                                     style={styles.actionIcon}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    delayPressIn={0}
                                   >
                                     <Edit size={18} color="#6366f1" />
                                   </TouchableOpacity>
                                   <TouchableOpacity
                                     onPress={() => handleDeleteSession(session.id, module.id)}
                                     style={styles.actionIcon}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    delayPressIn={0}
                                   >
-                                    <XCircle size={18} color="#94a3b8" />
+                                    <Trash2 size={18} color="#ef4444" />
                                   </TouchableOpacity>
                                 </View>
                               </View>
@@ -868,6 +993,49 @@ export default function CourseEditor() {
               </View>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmIconContainer}>
+              <Info size={32} color={confirmModalConfig?.confirmStyle === 'destructive' ? "#ef4444" : "#6366f1"} />
+            </View>
+            <Text style={styles.confirmTitle}>{confirmModalConfig?.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmModalConfig?.message}</Text>
+
+            <View style={styles.confirmButtons}>
+              {!confirmModalConfig?.singleButton && (
+                <TouchableOpacity
+                  style={styles.confirmButtonCancel}
+                  onPress={() => setConfirmModalVisible(false)}
+                >
+                  <Text style={styles.confirmButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.confirmButtonConfirm,
+                  confirmModalConfig?.confirmStyle === 'destructive' && styles.confirmButtonDestructive,
+                  confirmModalConfig?.singleButton && { flex: 1 }
+                ]}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  confirmModalConfig?.onConfirm();
+                }}
+              >
+                <Text style={styles.confirmButtonConfirmText}>
+                  {confirmModalConfig?.confirmText || 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView >
@@ -1156,7 +1324,12 @@ const styles = StyleSheet.create({
   moduleHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
+  },
+  moduleHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   moduleActions: {
     flexDirection: 'row',
@@ -1164,7 +1337,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   deleteIconButton: {
-    padding: 4,
+    padding: 8,
+  },
+  reorderIconButton: {
+    padding: 8,
   },
   sessionsContainer: {
     backgroundColor: '#f8fafc',
@@ -1209,7 +1385,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionIcon: {
-    padding: 6,
+    padding: 10,
   },
   sessionRowContent: {
     flexDirection: 'row',
@@ -1372,5 +1548,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  confirmModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff1f2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmButtonCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  confirmButtonCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  confirmButtonConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  confirmButtonDestructive: {
+    backgroundColor: '#ef4444',
+  },
+  confirmButtonConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

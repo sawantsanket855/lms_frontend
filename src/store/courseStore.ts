@@ -28,12 +28,14 @@ interface CourseState {
   addModule: (courseId: string, module: any) => Promise<void>;
   updateModule: (courseId: string, moduleId: string, module: any) => Promise<void>;
   deleteModule: (courseId: string, moduleId: string) => Promise<void>;
+  reorderModules: (courseId: string, moduleIds: string[]) => Promise<void>;
 
   // Session actions
   fetchSessions: (courseId: string, moduleId: string) => Promise<void>;
   createSession: (formData: FormData) => Promise<void>;
   updateSession: (sessionId: string, formData: FormData) => Promise<void>;
   deleteSession: (sessionId: string, courseId: string, moduleId: string) => Promise<void>;
+  reorderSessions: (courseId: string, moduleId: string, sessionIds: string[]) => Promise<void>;
 
   // Learning path actions
   fetchLearningPaths: () => Promise<void>;
@@ -208,6 +210,16 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const response = await api.post('/learning-paths', data);
     set((state) => ({ learningPaths: [...state.learningPaths, response.data] }));
     return response.data;
+  },
+
+  reorderModules: async (courseId, moduleIds) => {
+    const response = await api.put(`/courses/${courseId}/modules/reorder`, { ids: moduleIds });
+    set({ currentCourse: response.data });
+  },
+
+  reorderSessions: async (courseId, moduleId, sessionIds) => {
+    await api.put(`/courses/${courseId}/modules/${moduleId}/sessions/reorder`, { ids: sessionIds });
+    await get().fetchSessions(courseId, moduleId);
   },
 
   fetchProgress: async () => {

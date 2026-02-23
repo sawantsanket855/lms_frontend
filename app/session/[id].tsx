@@ -59,9 +59,8 @@ export default function SessionReaderScreen() {
                     setIsCompleted(true);
                     setTimeRemaining(0);
                 } else {
-                    // Set initial timer to half the session duration
-                    const halfDuration = Math.floor(sessionData.duration_minutes / 2);
-                    setTimeRemaining(halfDuration * 60); // Convert to seconds
+                    // Set timer to the full session duration
+                    setTimeRemaining(sessionData.duration_minutes * 60); // Convert to seconds
                 }
 
                 // Redirect if it's a quiz
