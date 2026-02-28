@@ -21,12 +21,14 @@ import {
     CheckCircle,
     ChevronRight
 } from 'lucide-react-native';
+import { useCourseStore } from '../../src/store/courseStore';
 import api from '../../src/services/api';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 
 export default function SessionReaderScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const { quizzes, fetchQuizzes } = useCourseStore();
     const [session, setSession] = useState<any>(null);
     const [allSessions, setAllSessions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -63,11 +65,13 @@ export default function SessionReaderScreen() {
                     setTimeRemaining(sessionData.duration_minutes * 60); // Convert to seconds
                 }
 
-                // Redirect if it's a quiz
+                // Redirect if it's a quiz session created directly? (Legacy support)
                 if (sessionData.content_type === 'quiz' && sessionData.quiz_id) {
                     router.replace(`/quiz/${sessionData.quiz_id}`);
                     return;
                 }
+
+                await fetchQuizzes(sessionData.course_id);
             } catch (error) {
                 console.error('Error loading session:', error);
                 Alert.alert('Error', 'Failed to load session');
@@ -162,6 +166,8 @@ export default function SessionReaderScreen() {
     const hasNext = currentIndex < allSessions.length - 1;
     const canComplete = timeRemaining === 0 || isCompleted;
 
+    const sessionQuiz = quizzes.find((q) => q.session_id === id);
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
@@ -229,6 +235,25 @@ export default function SessionReaderScreen() {
                             renderLoading={() => <LoadingSpinner message="Loading PDF..." />}
                         />
                     )}
+                </View>
+            ) : session.content_type === 'image' || (session.image_url) ? (
+                <View style={styles.imageContainer}>
+                    <View style={styles.pdfHeader}>
+                        <Text style={styles.sessionTitle}>{session.name}</Text>
+                        <View style={styles.meta}>
+                            <Clock size={16} color="#64748b" />
+                            <Text style={styles.metaText}>
+                                {session.duration_minutes} min view
+                            </Text>
+                        </View>
+                    </View>
+                    <ScrollView contentContainerStyle={styles.imageWrapper}>
+                        <img
+                            src={session.image_url || session.content_url}
+                            style={{ width: '100%', height: 'auto', borderRadius: 12 }}
+                            alt={session.name}
+                        />
+                    </ScrollView>
                 </View>
             ) : (
                 <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -300,8 +325,26 @@ export default function SessionReaderScreen() {
                     )}
                 </TouchableOpacity>
 
+                {sessionQuiz && (
+                    <TouchableOpacity
+                        style={[
+                            styles.completeButton,
+                            { backgroundColor: '#8b5cf6' },
+                            !isCompleted && styles.completeButtonDisabled,
+                        ]}
+                        onPress={() => router.push(`/quiz/${sessionQuiz.id}`)}
+                        disabled={!isCompleted}
+                    >
+                        <FileSearch size={20} color="#fff" />
+                        <Text style={styles.completeButtonText}>
+                            {isCompleted ? 'Take Quiz' : 'Complete Session First'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                     style={[styles.navButton, !hasNext && styles.navButtonDisabled]}
+
                     onPress={handleNext}
                     disabled={!hasNext}
                 >
@@ -498,5 +541,13 @@ const styles = StyleSheet.create({
     video: {
         width: '100%',
         height: '100%',
+    },
+    imageContainer: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    imageWrapper: {
+        padding: 16,
+        alignItems: 'center',
     },
 });

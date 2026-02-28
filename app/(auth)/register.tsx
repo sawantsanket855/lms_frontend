@@ -24,19 +24,6 @@ import {
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 
-const INTERESTS = [
-  'Programming',
-  'Data Science',
-  'Web Development',
-  'Mobile Development',
-  'Design',
-  'Business',
-  'Marketing',
-  'Finance',
-  'Leadership',
-  'Communication',
-];
-
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuthStore();
@@ -45,17 +32,8 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'student' | 'admin'>('student');
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const toggleInterest = (interest: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(interest)
-        ? prev.filter((i) => i !== interest)
-        : [...prev, interest]
-    );
-  };
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -75,7 +53,7 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      await register(email, password, name, role, selectedInterests);
+      await register(email, password, name, role);
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message);
@@ -162,66 +140,7 @@ export default function RegisterScreen() {
               />
             </View>
 
-            <View style={styles.roleSection}>
-              <Text style={styles.sectionTitle}>I am a:</Text>
-              <View style={styles.roleOptions}>
-                <TouchableOpacity
-                  style={[styles.roleOption, role === 'student' && styles.roleOptionSelected]}
-                  onPress={() => setRole('student')}
-                >
-                  <GraduationCap
-                    size={24}
-                    color={role === 'student' ? '#6366f1' : '#64748b'}
-                  />
-                  <Text
-                    style={[styles.roleText, role === 'student' && styles.roleTextSelected]}
-                  >
-                    Student
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleOption, role === 'admin' && styles.roleOptionSelected]}
-                  onPress={() => setRole('admin')}
-                >
-                  <Settings
-                    size={24}
-                    color={role === 'admin' ? '#6366f1' : '#64748b'}
-                  />
-                  <Text
-                    style={[styles.roleText, role === 'admin' && styles.roleTextSelected]}
-                  >
-                    Admin
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
-            {role === 'student' && (
-              <View style={styles.interestsSection}>
-                <Text style={styles.sectionTitle}>Select your interests:</Text>
-                <View style={styles.interestsGrid}>
-                  {INTERESTS.map((interest) => (
-                    <TouchableOpacity
-                      key={interest}
-                      style={[
-                        styles.interestChip,
-                        selectedInterests.includes(interest) && styles.interestChipSelected,
-                      ]}
-                      onPress={() => toggleInterest(interest)}
-                    >
-                      <Text
-                        style={[
-                          styles.interestText,
-                          selectedInterests.includes(interest) && styles.interestTextSelected,
-                        ]}
-                      >
-                        {interest}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
 
             <TouchableOpacity
               style={[styles.registerButton, isLoading && styles.disabledButton]}
@@ -294,71 +213,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1e293b',
-  },
-  roleSection: {
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: 12,
-  },
-  roleOptions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  roleOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    paddingVertical: 16,
-  },
-  roleOptionSelected: {
-    borderColor: '#6366f1',
-    backgroundColor: '#eef2ff',
-  },
-  roleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  roleTextSelected: {
-    color: '#6366f1',
-  },
-  interestsSection: {
-    marginTop: 8,
-  },
-  interestsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  interestChip: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  interestChipSelected: {
-    borderColor: '#6366f1',
-    backgroundColor: '#eef2ff',
-  },
-  interestText: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-  interestTextSelected: {
-    color: '#6366f1',
-    fontWeight: '600',
   },
   registerButton: {
     backgroundColor: '#6366f1',

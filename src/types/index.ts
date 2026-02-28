@@ -39,7 +39,6 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  category: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   tags: string[];
   modules: Module[];
@@ -47,6 +46,8 @@ export interface Course {
   created_by: string;
   created_at: string;
   is_published: boolean;
+  total_duration?: number;
+  module_count?: number;
 }
 
 export interface LearningPath {
@@ -81,6 +82,7 @@ export interface Quiz {
   id: string;
   course_id: string;
   module_id?: string;
+  session_id?: string;
   title: string;
   questions: QuizQuestion[];
   passing_score: number;

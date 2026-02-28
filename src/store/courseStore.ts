@@ -12,15 +12,14 @@ interface CourseState {
   expertQuestions: ExpertQuestion[];
   certificates: Certificate[];
   notifications: Notification[];
-  categories: string[];
   sessions: Record<string, Session[]>; // module_id -> sessions
   isLoading: boolean;
 
   // Course actions
-  fetchCourses: (filters?: { category?: string; difficulty?: string; search?: string }) => Promise<void>;
+  fetchCourses: (filters?: { difficulty?: string; search?: string }) => Promise<void>;
   fetchCourse: (id: string) => Promise<Course>;
-  createCourse: (data: Partial<Course>) => Promise<Course>;
-  updateCourse: (id: string, data: Partial<Course>) => Promise<Course>;
+  createCourse: (data: FormData) => Promise<Course>;
+  updateCourse: (id: string, data: FormData) => Promise<Course>;
   deleteCourse: (id: string) => Promise<void>;
   publishCourse: (id: string) => Promise<void>;
 
@@ -72,8 +71,6 @@ interface CourseState {
   markNotificationRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
 
-  // Category actions
-  fetchCategories: () => Promise<void>;
 }
 
 export const useCourseStore = create<CourseState>((set, get) => ({
@@ -86,7 +83,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   expertQuestions: [],
   certificates: [],
   notifications: [],
-  categories: [],
   sessions: {},
   isLoading: false,
 
@@ -94,7 +90,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set({ isLoading: true });
     try {
       const params = new URLSearchParams();
-      if (filters?.category) params.append('category', filters.category);
       if (filters?.difficulty) params.append('difficulty', filters.difficulty);
       if (filters?.search) params.append('search', filters.search);
 
@@ -112,15 +107,15 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return response.data;
   },
 
-  createCourse: async (data) => {
-    const response = await api.post('/courses', data);
+  createCourse: async (formData) => {
+    const response = await api.post('/courses', formData);
     const newCourse = { ...response.data, modules: response.data.modules || [] };
     set((state) => ({ courses: [...state.courses, newCourse] }));
     return newCourse;
   },
 
-  updateCourse: async (id, data) => {
-    const response = await api.put(`/courses/${id}`, data);
+  updateCourse: async (id, formData) => {
+    const response = await api.put(`/courses/${id}`, formData);
     const updatedCourse = { ...response.data, modules: response.data.modules || [] };
     set((state) => ({
       courses: state.courses.map((c) => (c.id === id ? updatedCourse : c)),
@@ -337,10 +332,5 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
     }));
-  },
-
-  fetchCategories: async () => {
-    const response = await api.get('/categories');
-    set({ categories: response.data });
   },
 }));

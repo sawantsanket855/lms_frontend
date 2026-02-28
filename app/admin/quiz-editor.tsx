@@ -19,11 +19,13 @@ import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 export default function QuizEditor() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-  const { courses, fetchCourses, createQuiz } = useCourseStore();
+  const { courses, fetchCourses, createQuiz, fetchSessions, sessions } = useCourseStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [selectedModuleId, setSelectedModuleId] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState('');
   const [title, setTitle] = useState('');
   const [passingScore, setPassingScore] = useState('70');
   const [timeLimit, setTimeLimit] = useState('30');
@@ -44,6 +46,23 @@ export default function QuizEditor() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (selectedCourseId && selectedModuleId && !sessions[selectedModuleId]) {
+      fetchSessions(selectedCourseId, selectedModuleId);
+    }
+  }, [selectedCourseId, selectedModuleId]);
+
+  const handleCourseChange = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedModuleId('');
+    setSelectedSessionId('');
+  };
+
+  const handleModuleChange = (moduleId: string) => {
+    setSelectedModuleId(moduleId);
+    setSelectedSessionId('');
+  };
 
   const handleAddQuestion = () => {
     setQuestions((prev) => [
@@ -92,6 +111,14 @@ export default function QuizEditor() {
       Alert.alert('Error', 'Please select a course');
       return;
     }
+    if (!selectedModuleId) {
+      Alert.alert('Error', 'Please select a module');
+      return;
+    }
+    if (!selectedSessionId) {
+      Alert.alert('Error', 'Please select a session');
+      return;
+    }
     if (!title) {
       Alert.alert('Error', 'Please enter a quiz title');
       return;
@@ -115,6 +142,8 @@ export default function QuizEditor() {
     try {
       await createQuiz({
         course_id: selectedCourseId,
+        module_id: selectedModuleId,
+        session_id: selectedSessionId,
         title,
         passing_score: parseInt(passingScore),
         time_limit_minutes: parseInt(timeLimit),
@@ -178,7 +207,7 @@ export default function QuizEditor() {
                     styles.courseChip,
                     selectedCourseId === course.id && styles.courseChipSelected,
                   ]}
-                  onPress={() => setSelectedCourseId(course.id)}
+                  onPress={() => handleCourseChange(course.id)}
                 >
                   <Text
                     style={[
@@ -192,6 +221,70 @@ export default function QuizEditor() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
+            {selectedCourseId && (
+              <>
+                <Text style={styles.label}>Module</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.courseList}
+                >
+                  {courses.find((c) => c.id === selectedCourseId)?.modules.map((module) => (
+                    <TouchableOpacity
+                      key={module.id}
+                      style={[
+                        styles.courseChip,
+                        selectedModuleId === module.id && styles.courseChipSelected,
+                      ]}
+                      onPress={() => handleModuleChange(module.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.courseChipText,
+                          selectedModuleId === module.id && styles.courseChipTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {module.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {selectedModuleId && (
+              <>
+                <Text style={styles.label}>Session</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.courseList}
+                >
+                  {(sessions[selectedModuleId] || []).map((session) => (
+                    <TouchableOpacity
+                      key={session.id}
+                      style={[
+                        styles.courseChip,
+                        selectedSessionId === session.id && styles.courseChipSelected,
+                      ]}
+                      onPress={() => setSelectedSessionId(session.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.courseChipText,
+                          selectedSessionId === session.id && styles.courseChipTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {session.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
 
             <Text style={styles.label}>Quiz Title</Text>
             <TextInput

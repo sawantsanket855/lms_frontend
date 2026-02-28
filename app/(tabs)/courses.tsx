@@ -19,33 +19,29 @@ const DIFFICULTIES = ['All', 'Beginner', 'Intermediate', 'Advanced'];
 
 export default function CoursesScreen() {
   const router = useRouter();
-  const { courses, categories, fetchCourses, fetchCategories, isLoading } = useCourseStore();
+  const { courses, fetchCourses, isLoading } = useCourseStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchCourses();
-    fetchCategories();
   }, []);
 
   const handleSearch = () => {
     fetchCourses({
       search: searchQuery || undefined,
-      category: selectedCategory || undefined,
       difficulty: selectedDifficulty !== 'All' ? selectedDifficulty.toLowerCase() : undefined,
     });
   };
 
   useEffect(() => {
     handleSearch();
-  }, [selectedCategory, selectedDifficulty]);
+  }, [selectedDifficulty]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchCourses();
-    await fetchCategories();
     setRefreshing(false);
   };
 
@@ -108,51 +104,6 @@ export default function CoursesScreen() {
         ))}
       </ScrollView>
 
-      {/* Category Filter */}
-      {categories.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoryContainer}
-          contentContainerStyle={styles.filterContent}
-        >
-          <TouchableOpacity
-            style={[
-              styles.categoryChip,
-              selectedCategory === null && styles.categoryChipSelected,
-            ]}
-            onPress={() => setSelectedCategory(null)}
-          >
-            <Text
-              style={[
-                styles.categoryChipText,
-                selectedCategory === null && styles.categoryChipTextSelected,
-              ]}
-            >
-              All Categories
-            </Text>
-          </TouchableOpacity>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryChip,
-                selectedCategory === category && styles.categoryChipSelected,
-              ]}
-              onPress={() => setSelectedCategory(category)}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  selectedCategory === category && styles.categoryChipTextSelected,
-                ]}
-              >
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
       {/* Course List */}
       <ScrollView
@@ -250,23 +201,6 @@ const styles = StyleSheet.create({
   },
   filterChipTextSelected: {
     color: '#fff',
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f1f5f9',
-  },
-  categoryChipSelected: {
-    backgroundColor: '#e0e7ff',
-  },
-  categoryChipText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  categoryChipTextSelected: {
-    color: '#6366f1',
   },
   courseList: {
     flex: 1,

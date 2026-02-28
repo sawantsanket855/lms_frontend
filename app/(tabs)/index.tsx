@@ -184,13 +184,16 @@ export default function HomeScreen() {
           {isLoading ? (
             <LoadingSpinner />
           ) : courses.length > 0 ? (
-            courses.slice(0, 3).map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                onPress={() => router.push(`/course/${course.id}`)}
-              />
-            ))
+            <View style={styles.gridContainer}>
+              {courses.slice(0, 6).map((course) => (
+                <View key={course.id} style={styles.gridItem}>
+                  <CourseCard
+                    course={course}
+                    onPress={() => router.push(`/course/${course.id}`)}
+                  />
+                </View>
+              ))}
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Book size={48} color="#cbd5e1" />
@@ -400,5 +403,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  gridItem: {
+    width: '33.33%',
+    padding: 6,
   },
 });

@@ -38,17 +38,6 @@ import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 import api from '../../src/services/api';
 import { uploadFileToFirebase } from '../../src/services/storage';
 
-const CATEGORIES = [
-  'Programming',
-  'Data Science',
-  'Web Development',
-  'Mobile Development',
-  'Design',
-  'Business',
-  'Marketing',
-  'Finance',
-];
-
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
 export default function CourseEditor() {
@@ -79,10 +68,11 @@ export default function CourseEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
   const [difficulty, setDifficulty] = useState('beginner');
   const [tags, setTags] = useState('');
   const [modules, setModules] = useState<any[]>([]);
+  const [thumbnail, setThumbnail] = useState('');
+  const [thumbnailFile, setThumbnailFile] = useState<any>(null);
   const [isPublished, setIsPublished] = useState(false);
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [moduleTitle, setModuleTitle] = useState('');
@@ -155,15 +145,29 @@ export default function CourseEditor() {
       const course = await fetchCourse(targetId);
       setTitle(course.title);
       setDescription(course.description);
-      setCategory(course.category);
       setDifficulty(course.difficulty);
       setTags(course.tags.join(', '));
       setModules(course.modules);
+      setThumbnail(course.thumbnail || '');
       setIsPublished(course.is_published);
     } catch (error) {
       showNotification('Error', 'Failed to load course', 'destructive');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePickThumbnail = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'image/*',
+      });
+
+      if (!result.canceled) {
+        setThumbnailFile(result.assets[0]);
+      }
+    } catch (err) {
+      console.error('Error picking thumbnail:', err);
     }
   };
 
@@ -175,20 +179,27 @@ export default function CourseEditor() {
 
     setIsSaving(true);
     try {
-      const courseData = {
-        title,
-        description,
-        category,
-        difficulty,
-        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-        is_published: isPublished,
-      };
+      let thumbnailUrl = thumbnail;
+
+      if (thumbnailFile) {
+        thumbnailUrl = await uploadFileToFirebase(thumbnailFile.uri, thumbnailFile.name);
+      }
+
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('difficulty', difficulty);
+      formData.append('tags', JSON.stringify(tags.split(',').map((t) => t.trim()).filter(Boolean)));
+      formData.append('is_published', String(isPublished));
+      if (thumbnailUrl) {
+        formData.append('thumbnail', thumbnailUrl);
+      }
 
       if (courseId) {
-        await updateCourse(courseId, courseData as any);
+        await updateCourse(courseId, formData as any);
         showNotification('Success', 'Course updated successfully');
       } else {
-        const newCourse = await createCourse(courseData as any);
+        const newCourse = await createCourse(formData as any);
         setCourseId(newCourse.id);
         router.setParams({ id: newCourse.id });
         loadCourse(newCourse.id);
@@ -221,8 +232,9 @@ export default function CourseEditor() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: sessionType === 'pdf' ? 'application/pdf' :
-          sessionType === 'audio' ? 'audio/*' :
-            sessionType === 'video' ? 'video/*' : '*/*',
+          sessionType === 'image' ? 'image/*' :
+            sessionType === 'audio' ? 'audio/*' :
+              sessionType === 'video' ? 'video/*' : '*/*',
       });
 
       if (!result.canceled) {
@@ -275,7 +287,12 @@ export default function CourseEditor() {
       if (sessionFile) {
         // Upload to Firebase Storage
         contentUrl = await uploadFileToFirebase(sessionFile.uri, sessionFile.name);
-        isDoc = true;
+        if (sessionType === 'image') {
+          // If it's an image session, we can also set isDoc to true or just handle it as a content_url
+          isDoc = true;
+        } else {
+          isDoc = true;
+        }
       }
 
       const formData = new FormData();
@@ -287,7 +304,12 @@ export default function CourseEditor() {
       formData.append('is_document_available', String(isDoc));
 
       if (contentUrl) {
-        formData.append('content_url', contentUrl);
+        if (sessionType === 'image') {
+          formData.append('image_url', contentUrl);
+          formData.append('content_url', contentUrl);
+        } else {
+          formData.append('content_url', contentUrl);
+        }
       }
       if (sessionText) {
         formData.append('content_text', sessionText);
@@ -539,33 +561,6 @@ export default function CourseEditor() {
               numberOfLines={4}
             />
 
-            <Text style={styles.label}>Category</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.chipContainer}
-            >
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.chip,
-                    category === cat && styles.chipSelected,
-                  ]}
-                  onPress={() => setCategory(cat)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      category === cat && styles.chipTextSelected,
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
             <Text style={styles.label}>Difficulty</Text>
             <View style={styles.difficultyContainer}>
               {DIFFICULTIES.map((diff) => (
@@ -597,6 +592,16 @@ export default function CourseEditor() {
               placeholder="e.g., python, beginner, coding"
               placeholderTextColor="#94a3b8"
             />
+            <Text style={styles.label}>Course Thumbnail</Text>
+            <TouchableOpacity style={styles.uploadButton} onPress={handlePickThumbnail}>
+              <CloudUpload size={24} color="#6366f1" />
+              <Text style={styles.uploadButtonText}>
+                {thumbnailFile ? thumbnailFile.name : (thumbnail ? 'Change Thumbnail' : 'Upload Thumbnail')}
+              </Text>
+            </TouchableOpacity>
+            {thumbnail && !thumbnailFile && (
+              <Text style={styles.helperText}>Current thumbnail: {thumbnail.split('/').pop()}</Text>
+            )}
 
             <Text style={styles.label}>Course Status</Text>
             <View style={styles.difficultyContainer}>
@@ -872,7 +877,7 @@ export default function CourseEditor() {
 
               <Text style={styles.modalLabel}>Content Type</Text>
               <View style={styles.typeSwitcher}>
-                {['video', 'audio', 'pdf', 'article', 'quiz', 'other'].map(type => (
+                {['video', 'audio', 'pdf', 'image', 'article', 'quiz', 'other'].map(type => (
                   <TouchableOpacity
                     key={type}
                     style={[styles.typeOption, sessionType === type && styles.typeSelected]}
@@ -888,7 +893,7 @@ export default function CourseEditor() {
                 ))}
               </View>
 
-              {['video', 'audio', 'pdf', 'other'].includes(sessionType) && (
+              {['video', 'audio', 'pdf', 'image', 'other'].includes(sessionType) && (
                 <View style={styles.uploadSection}>
                   <TouchableOpacity style={styles.uploadButton} onPress={handlePickFile}>
                     <CloudUpload size={24} color="#6366f1" />
@@ -1410,6 +1415,12 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 13,
     paddingVertical: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   modalScrollContent: {
     width: '100%',

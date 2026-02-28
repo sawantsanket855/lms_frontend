@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Book, Layers } from 'lucide-react-native';
+import { Book, Layers, Clock } from 'lucide-react-native';
 import { Course } from '../types';
 
 interface CourseCardProps {
   course: Course;
   onPress: () => void;
   progress?: number;
+  showStatus?: boolean;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -15,7 +16,7 @@ const difficultyColors: Record<string, string> = {
   advanced: '#ef4444',
 };
 
-export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progress }) => {
+export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progress, showStatus }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.thumbnail}>
@@ -36,29 +37,46 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progres
             {course.difficulty.charAt(0).toUpperCase() + course.difficulty.slice(1)}
           </Text>
         </View>
+        {showStatus && (
+          <View style={[
+            styles.statusBadge,
+            course.is_published ? styles.publishedBadge : styles.draftBadge,
+          ]}>
+            <Text style={[
+              styles.statusText,
+              course.is_published ? styles.publishedStatusText : styles.draftStatusText,
+            ]}>
+              {course.is_published ? 'Live' : 'Draft'}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={styles.content}>
-        <Text style={styles.category}>{course.category}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {course.title}
         </Text>
         <Text style={styles.description} numberOfLines={2}>
           {course.description}
         </Text>
-        <View style={styles.footer}>
+        <View style={styles.statContainer}>
           <View style={styles.stat}>
-            <Layers size={16} color="#64748b" />
-            <Text style={styles.statText}>{course.modules?.length || 0} modules</Text>
+            <Layers size={14} color="#64748b" />
+            <Text style={styles.statText}>{course.module_count || course.modules?.length || 0} modules</Text>
           </View>
-          {progress !== undefined && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              </View>
-              <Text style={styles.progressText}>{Math.round(progress)}%</Text>
-            </View>
-          )}
+          <View style={styles.statSeparator} />
+          <View style={styles.stat}>
+            <Clock size={14} color="#64748b" />
+            <Text style={styles.statText}>{course.total_duration || 0} min</Text>
+          </View>
         </View>
+        {progress !== undefined && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            </View>
+            <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -77,7 +95,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   thumbnail: {
-    height: 140,
+    height: 180,
     backgroundColor: '#f1f5f9',
     position: 'relative',
   },
@@ -101,44 +119,71 @@ const styles = StyleSheet.create({
   },
   difficultyText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  publishedBadge: {
+    backgroundColor: '#dcfce7',
+  },
+  draftBadge: {
+    backgroundColor: '#fee2e2',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  publishedStatusText: {
+    color: '#16a34a',
+  },
+  draftStatusText: {
+    color: '#dc2626',
   },
   content: {
-    padding: 16,
-  },
-  category: {
-    fontSize: 12,
-    color: '#6366f1',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 4,
+    padding: 12,
+    flex: 1,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1e293b',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   description: {
-    fontSize: 14,
-    color: '#64748b',
-    lineHeight: 20,
+    fontSize: 11,
+    color: '#94a3b8',
+    lineHeight: 16,
     marginBottom: 12,
   },
   footer: {
+    marginTop: 'auto',
+  },
+  statContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   stat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
+  statSeparator: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#e2e8f0',
+  },
   statText: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#64748b',
+    fontWeight: '500',
   },
   progressContainer: {
     flexDirection: 'row',

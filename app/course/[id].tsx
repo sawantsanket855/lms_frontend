@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -153,9 +154,16 @@ export default function CourseDetailScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Course Banner */}
         <View style={styles.banner}>
-          <View style={styles.bannerIcon}>
-            <Book size={48} color="#6366f1" />
-          </View>
+          {course.thumbnail ? (
+            <Image
+              source={{ uri: course.thumbnail }}
+              style={styles.bannerImage}
+            />
+          ) : (
+            <View style={styles.bannerIcon}>
+              <Book size={48} color="#6366f1" />
+            </View>
+          )}
         </View>
 
         {/* Course Info */}
@@ -170,9 +178,6 @@ export default function CourseDetailScreen() {
               <Text style={styles.badgeText}>
                 {course.difficulty.charAt(0).toUpperCase() + course.difficulty.slice(1)}
               </Text>
-            </View>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{course.category}</Text>
             </View>
           </View>
 
@@ -308,30 +313,6 @@ export default function CourseDetailScreen() {
           )}
         </View>
 
-        {/* Quizzes */}
-        {courseQuizzes.length > 0 && (
-          <View style={styles.quizzesSection}>
-            <Text style={styles.sectionTitle}>Assessments</Text>
-            {courseQuizzes.map((quiz) => (
-              <TouchableOpacity
-                key={quiz.id}
-                style={styles.quizCard}
-                onPress={() => router.push(`/quiz/${quiz.id}`)}
-              >
-                <View style={styles.quizIcon}>
-                  <ClipboardList size={24} color="#6366f1" />
-                </View>
-                <View style={styles.quizInfo}>
-                  <Text style={styles.quizTitle}>{quiz.title}</Text>
-                  <Text style={styles.quizMeta}>
-                    {quiz.questions.length} questions · {quiz.time_limit_minutes} min
-                  </Text>
-                </View>
-                <ChevronRight size={20} color="#94a3b8" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
 
         {/* Community Section */}
         <View style={styles.communitySection}>
@@ -396,6 +377,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e7ff',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   bannerIcon: {
     width: 80,
@@ -424,17 +411,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
-  },
-  categoryBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryText: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: '500',
   },
   courseTitle: {
     fontSize: 24,
@@ -616,41 +592,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 8,
   },
-  quizzesSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 12,
-  },
-  quizCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-  },
-  quizIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#eef2ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  quizInfo: {
-    flex: 1,
-  },
-  quizTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  quizMeta: {
-    fontSize: 13,
-    color: '#64748b',
-  },
+
   communitySection: {
     backgroundColor: '#fff',
     padding: 20,

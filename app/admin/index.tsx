@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useCourseStore } from '../../src/store/courseStore';
+import { CourseCard } from '../../src/components/CourseCard';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 import api from '../../src/services/api';
 
@@ -173,39 +174,17 @@ export default function AdminDashboard() {
               </TouchableOpacity>
             </View>
           </View>
-          {courses.slice(0, showAllCourses ? undefined : 5).map((course) => (
-            <TouchableOpacity
-              key={course.id}
-              style={styles.listItem}
-              onPress={() => router.push(`/admin/course-editor?id=${course.id}`)}
-            >
-              <View style={styles.listItemIcon}>
-                <Book size={20} color="#6366f1" />
+          <View style={styles.gridContainer}>
+            {courses.slice(0, showAllCourses ? undefined : 6).map((course) => (
+              <View key={course.id} style={styles.gridItem}>
+                <CourseCard
+                  course={course}
+                  onPress={() => router.push(`/admin/course-editor?id=${course.id}`)}
+                  showStatus={true}
+                />
               </View>
-              <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle}>{course.title}</Text>
-                <Text style={styles.listItemMeta}>
-                  {(course.modules || []).length} modules ·{' '}
-                  {course.is_published ? 'Published' : 'Draft'}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  course.is_published ? styles.publishedBadge : styles.draftBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusText,
-                    course.is_published ? styles.publishedText : styles.draftText,
-                  ]}
-                >
-                  {course.is_published ? 'Live' : 'Draft'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+            ))}
+          </View>
         </View>
 
         {/* Learning Paths */}
@@ -453,5 +432,14 @@ const styles = StyleSheet.create({
   },
   studentText: {
     color: '#64748b',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  gridItem: {
+    width: '33.33%',
+    padding: 6,
   },
 });
