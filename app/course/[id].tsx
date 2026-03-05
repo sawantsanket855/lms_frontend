@@ -26,7 +26,8 @@ import {
   ChevronRight,
   Folder,
   ClipboardList,
-  MessageSquare
+  MessageSquare,
+  MessageCircle,
 } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
 import { useAuthStore } from '../../src/store/authStore';
@@ -104,11 +105,9 @@ export default function CourseDetailScreen() {
   };
 
   const getModuleStats = (module: any) => {
-    // Priority 1: Use backend-provided stats
     if (module.session_count !== undefined) {
       return { count: module.session_count, time: module.total_duration || 0 };
     }
-    // Priority 2: Calculate from loaded sessions
     const moduleSessions = sessions[module.id] || [];
     if (moduleSessions.length > 0) {
       const count = moduleSessions.length;
@@ -269,33 +268,53 @@ export default function CourseDetailScreen() {
                     <View style={styles.moduleContent}>
                       {(sessions[module.id] || []).length > 0 ? (
                         sessions[module.id].map((session: any) => (
-                          <TouchableOpacity
-                            key={session.id}
-                            style={styles.sessionItem}
-                            onPress={() => router.push(`/session/${session.id}`)}
-                          >
-                            {session.completed ? (
-                              <CheckCircle size={18} color="#22c55e" />
-                            ) : session.content_type === 'video' ? (
-                              <PlayCircle size={18} color="#6366f1" />
-                            ) : session.content_type === 'audio' ? (
-                              <Headphones size={18} color="#6366f1" />
-                            ) : session.content_type === 'pdf' ? (
-                              <FileText size={18} color="#6366f1" />
-                            ) : session.content_type === 'quiz' ? (
-                              <HelpCircle size={18} color="#6366f1" />
-                            ) : (
-                              <Layout size={18} color="#6366f1" />
-                            )}
-                            <View style={styles.sessionInfo}>
-                              <Text style={styles.sessionName}>{session.name}</Text>
-                              <Text style={styles.sessionMeta}>
-                                {session.content_type} · {session.duration_minutes} min
-                                {session.is_document_available && ' · File available'}
-                              </Text>
-                            </View>
-                            <ChevronRight size={18} color="#cbd5e1" />
-                          </TouchableOpacity>
+                          <React.Fragment key={session.id}>
+                            <TouchableOpacity
+                              style={[
+                                styles.sessionItem,
+                                session.completed && styles.sessionItemCompleted
+                              ]}
+                              onPress={() => router.push(`/session/${session.id}`)}
+                            >
+                              {session.completed ? (
+                                <CheckCircle size={18} color="#22c55e" />
+                              ) : session.content_type === 'video' ? (
+                                <PlayCircle size={18} color="#6366f1" />
+                              ) : session.content_type === 'audio' ? (
+                                <Headphones size={18} color="#6366f1" />
+                              ) : session.content_type === 'pdf' ? (
+                                <FileText size={18} color="#6366f1" />
+                              ) : session.content_type === 'quiz' ? (
+                                <HelpCircle size={18} color="#6366f1" />
+                              ) : (
+                                <Layout size={18} color="#6366f1" />
+                              )}
+                              <View style={styles.sessionInfo}>
+                                <Text style={styles.sessionName}>{session.name}</Text>
+                                <Text style={styles.sessionMeta}>
+                                  {session.content_type} · {session.duration_minutes} min
+                                  {session.is_document_available && ' · File available'}
+                                </Text>
+                              </View>
+                              <ChevronRight size={18} color="#cbd5e1" />
+                            </TouchableOpacity>
+
+                            {/* Show associated quiz if any */}
+                            {quizzes.filter(q => q.session_id === session.id).map(quiz => (
+                              <TouchableOpacity
+                                key={quiz.id}
+                                style={styles.quizItem}
+                                onPress={() => router.push(`/quiz/${quiz.id}`)}
+                              >
+                                <HelpCircle size={16} color="#8b5cf6" />
+                                <View style={styles.sessionInfo}>
+                                  <Text style={styles.quizName}>{quiz.title}</Text>
+                                  <Text style={styles.sessionMeta}>Quiz · {quiz.questions?.length || 0} questions</Text>
+                                </View>
+                                <ChevronRight size={16} color="#cbd5e1" />
+                              </TouchableOpacity>
+                            ))}
+                          </React.Fragment>
                         ))
                       ) : (
                         <Text style={styles.noSessions}>No sessions yet</Text>
@@ -313,6 +332,36 @@ export default function CourseDetailScreen() {
           )}
         </View>
 
+        {/* Assessments Section */}
+        {courseQuizzes.length > 0 && (
+          <View style={styles.modulesSection}>
+            <Text style={styles.sectionTitle}>Assessments</Text>
+            <Text style={styles.moduleCount}>{courseQuizzes.length} quizzes available</Text>
+
+            <View style={styles.quizList}>
+              {courseQuizzes.map((quiz) => (
+                <TouchableOpacity
+                  key={quiz.id}
+                  style={styles.quizCard}
+                  onPress={() => router.push(`/quiz/${quiz.id}`)}
+                >
+                  <View style={styles.quizCardHeader}>
+                    <View style={styles.quizIconFull}>
+                      <ClipboardList size={24} color="#8b5cf6" />
+                    </View>
+                    <View style={styles.quizCardInfo}>
+                      <Text style={styles.quizCardTitle}>{quiz.title}</Text>
+                      <Text style={styles.quizCardMeta}>
+                        {quiz.questions?.length || 0} Questions · {quiz.time_limit_minutes || 30} mins
+                      </Text>
+                    </View>
+                    <ChevronRight size={20} color="#cbd5e1" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Community Section */}
         <View style={styles.communitySection}>
@@ -329,7 +378,7 @@ export default function CourseDetailScreen() {
             style={styles.communityCard}
             onPress={() => router.push('/(tabs)/community')}
           >
-            <HelpCircle size={24} color="#f59e0b" />
+            <MessageCircle size={24} color="#f59e0b" />
             <Text style={styles.communityText}>Ask an Expert</Text>
             <ChevronRight size={20} color="#94a3b8" />
           </TouchableOpacity>
@@ -558,41 +607,87 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
-  viewContentButton: {
+  sessionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    gap: 12,
+    borderRadius: 8,
   },
-  viewContentText: {
-    fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '500',
+  sessionItemCompleted: {
+    backgroundColor: '#f0fdf4', // light green
   },
-  completeButton: {
+  quizItem: {
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginLeft: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 12,
+    backgroundColor: '#fafafa',
+    borderLeftWidth: 2,
+    borderLeftColor: '#8b5cf6',
+  },
+  quizName: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  quizList: {
+    marginTop: 12,
+    gap: 12,
+  },
+  quizCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+  },
+  quizCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  quizIconFull: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#f5f3ff',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#22c55e',
-    borderRadius: 10,
-    paddingVertical: 12,
   },
-  completeButtonText: {
-    color: '#fff',
-    fontSize: 14,
+  quizCardInfo: {
+    flex: 1,
+  },
+  quizCardTitle: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
   },
-  emptyModules: {
-    alignItems: 'center',
-    paddingVertical: 32,
+  quizCardMeta: {
+    fontSize: 13,
+    color: '#64748b',
   },
-  emptyText: {
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionName: {
     fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 8,
+    fontWeight: '500',
+    color: '#1e293b',
+    marginBottom: 2,
   },
-
+  sessionMeta: {
+    fontSize: 12,
+    color: '#64748b',
+  },
   communitySection: {
     backgroundColor: '#fff',
     padding: 20,
@@ -635,32 +730,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  sessionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    gap: 12,
-  },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1e293b',
-    marginBottom: 2,
-  },
-  sessionMeta: {
-    fontSize: 12,
-    color: '#64748b',
-  },
   noSessions: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#94a3b8',
     textAlign: 'center',
-    paddingVertical: 16,
+    marginTop: 8,
+  },
+  emptyModules: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#94a3b8',
   },
 });

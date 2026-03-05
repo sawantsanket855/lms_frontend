@@ -29,4 +29,6 @@ api.interceptors.response.use(
   }
 );
 
+export const getMediaUrl = (mid: string) => `${API_URL}/api/media/stream/${mid}`;
+
 export default api;

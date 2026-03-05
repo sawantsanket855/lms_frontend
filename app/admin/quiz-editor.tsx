@@ -140,7 +140,14 @@ export default function QuizEditor() {
 
     setIsSaving(true);
     try {
-      await createQuiz({
+      console.log('Saving quiz:', {
+        course_id: selectedCourseId,
+        module_id: selectedModuleId,
+        session_id: selectedSessionId,
+        title,
+      });
+
+      const response = await createQuiz({
         course_id: selectedCourseId,
         module_id: selectedModuleId,
         session_id: selectedSessionId,
@@ -152,11 +159,21 @@ export default function QuizEditor() {
           id: undefined, // Let backend generate ID
         })),
       });
+
+      console.log('Quiz saved successfully:', response);
+
       Alert.alert('Success', 'Quiz created successfully', [
-        { text: 'OK', onPress: () => router.back() },
+        {
+          text: 'OK',
+          onPress: () => {
+            console.log('Alert OK pressed, navigating back');
+            router.back();
+          }
+        },
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create quiz');
+      console.error('Error saving quiz:', error);
+      Alert.alert('Error', error.response?.data?.detail || error.message || 'Failed to create quiz');
     } finally {
       setIsSaving(false);
     }

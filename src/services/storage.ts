@@ -1,44 +1,49 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "./firebaseConfig";
+import { Platform } from 'react-native';
+import api from "./api";
 
 /**
- * Uploads a file to Firebase Storage in the 'lms_documents' folder.
+ * Uploads a file to the backend PostgreSQL storage.
  * 
  * @param fileUri - The local URI of the file to upload.
  * @param fileName - The name of the file.
- * @returns The public download URL of the uploaded file.
+ * @returns The ID of the stored media file.
  */
-export const uploadFileToFirebase = async (fileUri: string, fileName: string): Promise<string> => {
+export const uploadFile = async (fileUri: string, fileName: string): Promise<string> => {
     try {
-        const response = await fetch(fileUri);
-        const blob = await response.blob();
+        const formData = new FormData();
 
-        // Create a reference to 'lms_documents/fileName'
-        const storageRef = ref(storage, `lms_documents/${Date.now()}_${fileName}`);
+        // In React Native, the file object in FormData needs special handling
+        // We use the file extension to determine the mime type
+        const extension = fileName.split('.').pop()?.toLowerCase();
+        let type = 'application/octet-stream';
 
-        // Infer content type if not present or generic
-        let contentType = blob.type;
-        if (!contentType || contentType === 'application/octet-stream') {
-            const ext = fileName.split('.').pop()?.toLowerCase();
-            if (ext === 'mp4') contentType = 'video/mp4';
-            else if (ext === 'mov') contentType = 'video/quicktime';
-            else if (ext === 'webm') contentType = 'video/webm';
-            else if (ext === 'pdf') contentType = 'application/pdf';
-            else if (ext === 'mp3') contentType = 'audio/mpeg';
-            else if (ext === 'wav') contentType = 'audio/wav';
-            else if (ext === 'm4a') contentType = 'audio/x-m4a';
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) {
+            type = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+        } else if (['mp4', 'mov', 'avi', 'mkv'].includes(extension || '')) {
+            type = `video/${extension === 'mov' ? 'quicktime' : extension}`;
+        } else if (extension === 'pdf') {
+            type = 'application/pdf';
+        } else if (['mp3', 'wav', 'm4a'].includes(extension || '')) {
+            type = `audio/${extension === 'm4a' ? 'mp4' : extension}`;
         }
 
-        const metadata = {
-            contentType: contentType || 'application/octet-stream',
-        };
+        // @ts-ignore - FormData expects Blobs but React Native uses this object format
+        formData.append('file', {
+            uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
+            name: fileName,
+            type: type
+        } as any);
 
-        await uploadBytes(storageRef, blob, metadata);
-        const downloadURL = await getDownloadURL(storageRef);
+        const response = await api.post('/media/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            // Add onUploadProgress if needed for UI feedback
+        });
 
-        return downloadURL;
+        return response.data.id;
     } catch (error) {
-        console.error("Error uploading file to Firebase:", error);
+        console.error("Error uploading file to Backend:", error);
         throw error;
     }
 };

@@ -21,6 +21,7 @@ export interface Session {
   content_url?: string;
   content_text?: string;
   quiz_id?: string;
+  media_id?: string;
   is_document_available: boolean;
   created_at: string;
 }
@@ -43,6 +44,7 @@ export interface Course {
   tags: string[];
   modules: Module[];
   thumbnail?: string;
+  thumbnail_id?: string;
   created_by: string;
   created_at: string;
   is_published: boolean;

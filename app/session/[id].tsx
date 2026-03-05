@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     Alert,
     Platform,
+    Image,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -22,7 +23,7 @@ import {
     ChevronRight
 } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
-import api from '../../src/services/api';
+import api, { getMediaUrl } from '../../src/services/api';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 
 export default function SessionReaderScreen() {
@@ -35,8 +36,17 @@ export default function SessionReaderScreen() {
     const [timeRemaining, setTimeRemaining] = useState(0);
     const [isCompleted, setIsCompleted] = useState(false);
 
+    // Resolve media URI
+    const contentUri = session?.media_id
+        ? getMediaUrl(session.media_id)
+        : session?.content_url;
+
+    const imageUri = session?.media_id
+        ? getMediaUrl(session.media_id)
+        : (session?.image_url || session?.content_url);
+
     // Video Player Setup
-    const player = useVideoPlayer(session?.content_url, (player) => {
+    const player = useVideoPlayer(contentUri, (player) => {
         player.loop = false;
         // player.play(); // Optional: Auto-play
     });
@@ -110,6 +120,11 @@ export default function SessionReaderScreen() {
         try {
             await api.post(`/sessions/${id}/complete`);
             setIsCompleted(true);
+            setTimeRemaining(0);
+
+            // Refresh progress in store if needed
+            // await fetchCourseProgress(session.course_id); 
+
             Alert.alert('Success', 'Session completed!');
         } catch (error) {
             console.error('Error completing session:', error);
@@ -219,7 +234,7 @@ export default function SessionReaderScreen() {
                     </View>
                     {Platform.OS === 'web' ? (
                         <iframe
-                            src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(session.content_url)}`}
+                            src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(contentUri)}`}
                             style={{ flex: 1, border: 'none', height: '100%', width: '100%' }}
                             title="PDF Viewer"
                         />
@@ -227,8 +242,8 @@ export default function SessionReaderScreen() {
                         <WebView
                             source={{
                                 uri: Platform.OS === 'android'
-                                    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(session.content_url)}`
-                                    : session.content_url
+                                    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(contentUri)}`
+                                    : contentUri
                             }}
                             style={styles.webview}
                             startInLoadingState={true}
@@ -248,10 +263,10 @@ export default function SessionReaderScreen() {
                         </View>
                     </View>
                     <ScrollView contentContainerStyle={styles.imageWrapper}>
-                        <img
-                            src={session.image_url || session.content_url}
-                            style={{ width: '100%', height: 'auto', borderRadius: 12 }}
-                            alt={session.name}
+                        <Image
+                            source={{ uri: imageUri }}
+                            style={styles.contentImage}
+                            resizeMode="contain"
                         />
                     </ScrollView>
                 </View>
@@ -549,5 +564,10 @@ const styles = StyleSheet.create({
     imageWrapper: {
         padding: 16,
         alignItems: 'center',
+    },
+    contentImage: {
+        width: '100%',
+        height: 400, // Fixed height or aspect ratio preferred in RN
+        borderRadius: 12,
     },
 });

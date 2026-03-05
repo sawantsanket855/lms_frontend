@@ -35,8 +35,7 @@ import {
 } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
-import api from '../../src/services/api';
-import { uploadFileToFirebase } from '../../src/services/storage';
+import { uploadFile } from '../../src/services/storage';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
@@ -72,6 +71,7 @@ export default function CourseEditor() {
   const [tags, setTags] = useState('');
   const [modules, setModules] = useState<any[]>([]);
   const [thumbnail, setThumbnail] = useState('');
+  const [thumbnailId, setThumbnailId] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState<any>(null);
   const [isPublished, setIsPublished] = useState(false);
   const [showModuleModal, setShowModuleModal] = useState(false);
@@ -149,6 +149,7 @@ export default function CourseEditor() {
       setTags(course.tags.join(', '));
       setModules(course.modules);
       setThumbnail(course.thumbnail || '');
+      setThumbnailId(course.thumbnail_id || '');
       setIsPublished(course.is_published);
     } catch (error) {
       showNotification('Error', 'Failed to load course', 'destructive');
@@ -182,7 +183,9 @@ export default function CourseEditor() {
       let thumbnailUrl = thumbnail;
 
       if (thumbnailFile) {
-        thumbnailUrl = await uploadFileToFirebase(thumbnailFile.uri, thumbnailFile.name);
+        const uploadedId = await uploadFile(thumbnailFile.uri, thumbnailFile.name);
+        thumbnailUrl = uploadedId; // In our new system, this returns the ID
+        setThumbnailId(uploadedId);
       }
 
       const formData = new FormData();
@@ -192,7 +195,7 @@ export default function CourseEditor() {
       formData.append('tags', JSON.stringify(tags.split(',').map((t) => t.trim()).filter(Boolean)));
       formData.append('is_published', String(isPublished));
       if (thumbnailUrl) {
-        formData.append('thumbnail', thumbnailUrl);
+        formData.append('thumbnail_id', thumbnailUrl);
       }
 
       if (courseId) {
@@ -285,8 +288,8 @@ export default function CourseEditor() {
       let isDoc = false;
 
       if (sessionFile) {
-        // Upload to Firebase Storage
-        contentUrl = await uploadFileToFirebase(sessionFile.uri, sessionFile.name);
+        // Upload to Backend Storage
+        contentUrl = await uploadFile(sessionFile.uri, sessionFile.name);
         if (sessionType === 'image') {
           // If it's an image session, we can also set isDoc to true or just handle it as a content_url
           isDoc = true;
@@ -304,6 +307,7 @@ export default function CourseEditor() {
       formData.append('is_document_available', String(isDoc));
 
       if (contentUrl) {
+        formData.append('media_id', contentUrl);
         if (sessionType === 'image') {
           formData.append('image_url', contentUrl);
           formData.append('content_url', contentUrl);

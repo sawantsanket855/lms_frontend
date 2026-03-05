@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Book, Layers, Clock } from 'lucide-react-native';
 import { Course } from '../types';
+import { getMediaUrl } from '../services/api';
 
 interface CourseCardProps {
   course: Course;
@@ -17,11 +18,15 @@ const difficultyColors: Record<string, string> = {
 };
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progress, showStatus }) => {
+  const thumbnailUri = course.thumbnail_id
+    ? getMediaUrl(course.thumbnail_id)
+    : course.thumbnail;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.thumbnail}>
-        {course.thumbnail ? (
-          <Image source={{ uri: course.thumbnail }} style={styles.thumbnailImage} />
+        {thumbnailUri ? (
+          <Image source={{ uri: thumbnailUri }} style={styles.thumbnailImage} />
         ) : (
           <View style={styles.placeholderThumbnail}>
             <Book size={32} color="#94a3b8" />
