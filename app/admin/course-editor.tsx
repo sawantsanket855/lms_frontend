@@ -183,7 +183,7 @@ export default function CourseEditor() {
       let thumbnailUrl = thumbnail;
 
       if (thumbnailFile) {
-        const uploadedId = await uploadFile(thumbnailFile.uri, thumbnailFile.name);
+        const uploadedId = await uploadFile(thumbnailFile.uri, thumbnailFile.name, thumbnailFile.file);
         thumbnailUrl = uploadedId; // In our new system, this returns the ID
         setThumbnailId(uploadedId);
       }
@@ -289,7 +289,7 @@ export default function CourseEditor() {
 
       if (sessionFile) {
         // Upload to Backend Storage
-        contentUrl = await uploadFile(sessionFile.uri, sessionFile.name);
+        contentUrl = await uploadFile(sessionFile.uri, sessionFile.name, sessionFile.file);
         if (sessionType === 'image') {
           // If it's an image session, we can also set isDoc to true or just handle it as a content_url
           isDoc = true;
@@ -603,7 +603,7 @@ export default function CourseEditor() {
                 {thumbnailFile ? thumbnailFile.name : (thumbnail ? 'Change Thumbnail' : 'Upload Thumbnail')}
               </Text>
             </TouchableOpacity>
-            {thumbnail && !thumbnailFile && (
+            {Boolean(thumbnail) && !thumbnailFile && (
               <Text style={styles.helperText}>Current thumbnail: {thumbnail.split('/').pop()}</Text>
             )}
 

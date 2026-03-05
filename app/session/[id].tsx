@@ -233,11 +233,15 @@ export default function SessionReaderScreen() {
                         </View>
                     </View>
                     {Platform.OS === 'web' ? (
-                        <iframe
-                            src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(contentUri)}`}
+                        <object
+                            data={contentUri}
+                            type="application/pdf"
                             style={{ flex: 1, border: 'none', height: '100%', width: '100%' }}
+                            // @ts-ignore
                             title="PDF Viewer"
-                        />
+                        >
+                            <Text style={{ padding: 20, textAlign: 'center' }}>Unable to display PDF. Please check your browser settings or download the file.</Text>
+                        </object>
                     ) : (
                         <WebView
                             source={{

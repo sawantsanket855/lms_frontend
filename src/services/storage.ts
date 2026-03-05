@@ -8,7 +8,7 @@ import api from "./api";
  * @param fileName - The name of the file.
  * @returns The ID of the stored media file.
  */
-export const uploadFile = async (fileUri: string, fileName: string): Promise<string> => {
+export const uploadFile = async (fileUri: string, fileName: string, fileObj?: any): Promise<string> => {
     try {
         const formData = new FormData();
 
@@ -27,17 +27,29 @@ export const uploadFile = async (fileUri: string, fileName: string): Promise<str
             type = `audio/${extension === 'm4a' ? 'mp4' : extension}`;
         }
 
-        // @ts-ignore - FormData expects Blobs but React Native uses this object format
-        formData.append('file', {
-            uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
-            name: fileName,
-            type: type
-        } as any);
+        if (Platform.OS === 'web') {
+            if (fileObj) {
+                formData.append('file', fileObj, fileName);
+            } else {
+                const res = await fetch(fileUri);
+                const blob = await res.blob();
+                formData.append('file', blob, fileName);
+            }
+        } else {
+            // @ts-ignore - FormData expects Blobs but React Native uses this object format
+            formData.append('file', {
+                uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
+                name: fileName,
+                type: type
+            } as any);
+        }
+
+        const headers = Platform.OS === 'web' 
+            ? {} 
+            : { 'Content-Type': 'multipart/form-data' };
 
         const response = await api.post('/media/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            headers,
             // Add onUploadProgress if needed for UI feedback
         });
 
