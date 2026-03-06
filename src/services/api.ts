@@ -1,7 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+// const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = "https://lms-backend-tp4y.onrender.com"
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
