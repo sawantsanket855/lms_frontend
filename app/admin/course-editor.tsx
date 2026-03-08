@@ -349,12 +349,11 @@ export default function CourseEditor() {
     setSessionFile(null);
     setSessionText('');
     setIsEditingSession(false);
-    setSessionText('');
     setSelectedQuizId(null);
     setIsCreatingQuiz(false);
     setNewQuizTitle('');
-    setIsEditingSession(false);
     setCurrentSessionId(null);
+    setIsAddingSession(false);
   };
 
   const handleEditSession = (session: any) => {
@@ -996,7 +995,9 @@ export default function CourseEditor() {
                   disabled={isAddingSession}
                 >
                   <Text style={styles.modalButtonText}>
-                    {isAddingSession ? 'Saving...' : (isEditingSession ? 'Update Session' : 'Add Session')}
+                    {isAddingSession
+                      ? (sessionFile ? '(this may take a minute)...' : 'Saving...')
+                      : (isEditingSession ? 'Update Session' : 'Add Session')}
                   </Text>
                 </TouchableOpacity>
               </View>
