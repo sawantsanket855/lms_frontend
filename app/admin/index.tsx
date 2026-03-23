@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,7 +20,10 @@ import {
   Map,
   Plus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Edit,
+  Trash2,
+  Info
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useCourseStore } from '../../src/store/courseStore';
@@ -37,16 +41,61 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAllCourses, setShowAllCourses] = useState(false);
 
+  // Custom Confirmation Modal State
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }>({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }) => {
+    setConfirmModalConfig(config);
+    setConfirmModalVisible(true);
+  };
+
+  const handleDeletePath = (pathId: string, pathTitle: string) => {
+    showConfirm({
+      title: 'Delete Learning Path',
+      message: `Are you sure you want to delete "${pathTitle}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      confirmStyle: 'destructive',
+      onConfirm: async () => {
+        try {
+          const { deleteLearningPath } = useCourseStore.getState();
+          await deleteLearningPath(pathId);
+        } catch (error: any) {
+          console.error('Error deleting learning path:', error);
+        }
+      },
+    });
+  };
+
   const loadData = async () => {
     try {
       await fetchCourses();
       await fetchLearningPaths();
       const [analyticsRes, usersRes] = await Promise.all([
         api.get('/admin/analytics'),
-        api.get('/admin/users'),
+        api.get('/admin/users?limit=5&role=student'),
       ]);
       setAnalytics(analyticsRes.data);
-      setUsers(usersRes.data);
+      const usersData = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.users || []);
+      setUsers(usersData);
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
@@ -154,6 +203,24 @@ export default function AdminDashboard() {
               </View>
               <Text style={styles.actionText}>Create Path</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/admin/users' as any)}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#f0f9ff' }]}>
+                <Users size={28} color="#0ea5e9" />
+              </View>
+              <Text style={styles.actionText}>Manage Students</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/admin/certificates/templates' as any)}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#fee2e2' }]}>
+                <Award size={28} color="#ef4444" />
+              </View>
+              <Text style={styles.actionText}>Certificate Templates</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -187,7 +254,7 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Learning Paths */}
+        {/* Learning Paths - FIX APPLIED */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Learning Paths ({learningPaths.length})</Text>
@@ -196,10 +263,9 @@ export default function AdminDashboard() {
             </TouchableOpacity>
           </View>
           {learningPaths.slice(0, 5).map((path) => (
-            <TouchableOpacity
+            <View
               key={path.id}
               style={styles.listItem}
-              onPress={() => router.push(`/admin/learning-path-editor?id=${path.id}`)}
             >
               <View style={styles.listItemIcon}>
                 <Map size={20} color="#f59e0b" />
@@ -210,7 +276,21 @@ export default function AdminDashboard() {
                   {path.course_ids.length} courses
                 </Text>
               </View>
-            </TouchableOpacity>
+              <View style={styles.listItemActions}>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => router.push(`/admin/learning-path-editor?id=${path.id}`)}
+                >
+                  <Edit size={18} color="#6366f1" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => handleDeletePath(path.id, path.title)}
+                >
+                  <Trash2 size={18} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
           ))}
         </View>
 
@@ -247,6 +327,49 @@ export default function AdminDashboard() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmIconContainer}>
+              <Info size={32} color={confirmModalConfig.confirmStyle === 'destructive' ? "#ef4444" : "#6366f1"} />
+            </View>
+            <Text style={styles.confirmTitle}>{confirmModalConfig.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmModalConfig.message}</Text>
+
+            <View style={styles.confirmButtons}>
+              {!confirmModalConfig.singleButton && (
+                <TouchableOpacity
+                  style={styles.confirmButtonCancel}
+                  onPress={() => setConfirmModalVisible(false)}
+                >
+                  <Text style={styles.confirmButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.confirmButtonConfirm,
+                  confirmModalConfig.confirmStyle === 'destructive' && styles.confirmButtonDestructive,
+                  confirmModalConfig.singleButton && { flex: 1 }
+                ]}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  confirmModalConfig.onConfirm();
+                }}
+              >
+                <Text style={styles.confirmButtonConfirmText}>
+                  {confirmModalConfig.confirmText || 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -323,10 +446,11 @@ const styles = StyleSheet.create({
   },
   actionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   actionCard: {
-    flex: 1,
+    width: '48%',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
@@ -441,5 +565,86 @@ const styles = StyleSheet.create({
   gridItem: {
     width: '33.33%',
     padding: 6,
+  },
+  listItemActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmButtonCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  confirmButtonCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  confirmButtonConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  confirmButtonDestructive: {
+    backgroundColor: '#ef4444',
+  },
+  confirmButtonConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

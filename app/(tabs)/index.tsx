@@ -15,7 +15,8 @@ import {
   Book,
   CheckCircle,
   Award,
-  Map
+  Map,
+  ChevronRight
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useCourseStore } from '../../src/store/courseStore';
@@ -26,8 +27,7 @@ import { LearningPath, Course } from '../../src/types';
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { courses, fetchCourses, fetchRecommendedPaths, fetchNotifications, notifications, isLoading } = useCourseStore();
-  const [recommendedPaths, setRecommendedPaths] = useState<LearningPath[]>([]);
+  const { courses, fetchCourses, fetchLearningPaths, learningPaths, fetchNotifications, notifications, isLoading } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
 
@@ -35,8 +35,7 @@ export default function HomeScreen() {
     try {
       await fetchCourses();
       await fetchNotifications();
-      const paths = await fetchRecommendedPaths();
-      setRecommendedPaths(paths);
+      await fetchLearningPaths();
 
       const dashboard = await useCourseStore.getState().fetchDashboard();
       setDashboardData(dashboard);
@@ -103,7 +102,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.statCard}>
               <CheckCircle size={24} color="#22c55e" />
-              <Text style={styles.statNumber}>{dashboardData.total_modules_completed}</Text>
+              <Text style={styles.statNumber}>{dashboardData.completed_courses || 0}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </View>
             <View style={styles.statCard}>
@@ -114,69 +113,13 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Continue Learning */}
-        {dashboardData?.course_stats?.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Continue Learning</Text>
-            </View>
-            {dashboardData.course_stats.slice(0, 2).map((stat: any) => (
-              <TouchableOpacity
-                key={stat.course_id}
-                style={styles.continueCard}
-                onPress={() => router.push(`/course/${stat.course_id}`)}
-              >
-                <View style={styles.continueInfo}>
-                  <Text style={styles.continueTitle}>{stat.course_title}</Text>
-                  <Text style={styles.continueProgress}>
-                    {stat.completed_modules} / {stat.total_modules} modules
-                  </Text>
-                </View>
-                <View style={styles.continueProgressBar}>
-                  <View
-                    style={[
-                      styles.continueProgressFill,
-                      { width: `${stat.progress_percentage}%` },
-                    ]}
-                  />
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
 
-        {/* Recommended Learning Paths */}
-        {recommendedPaths.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recommended Paths</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAll}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {recommendedPaths.map((path) => (
-                <TouchableOpacity key={path.id} style={styles.pathCard}>
-                  <View style={styles.pathIcon}>
-                    <Map size={28} color="#6366f1" />
-                  </View>
-                  <Text style={styles.pathTitle}>{path.title}</Text>
-                  <Text style={styles.pathDescription} numberOfLines={2}>
-                    {path.description}
-                  </Text>
-                  <Text style={styles.pathCourses}>
-                    {path.course_ids.length} courses
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
-        {/* Featured Courses */}
+
+        {/* Courses */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured Courses</Text>
+            <Text style={styles.sectionTitle}>Courses</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/courses')}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
@@ -185,14 +128,16 @@ export default function HomeScreen() {
             <LoadingSpinner />
           ) : courses.length > 0 ? (
             <View style={styles.gridContainer}>
-              {courses.slice(0, 6).map((course) => (
-                <View key={course.id} style={styles.gridItem}>
-                  <CourseCard
-                    course={course}
-                    onPress={() => router.push(`/course/${course.id}`)}
-                  />
-                </View>
-              ))}
+              {courses.map((course) => {
+                return (
+                  <View key={course.id} style={styles.gridItem}>
+                    <CourseCard
+                      course={course}
+                      onPress={() => router.push(`/course/${course.id}`)}
+                    />
+                  </View>
+                );
+              })}
             </View>
           ) : (
             <View style={styles.emptyState}>
@@ -209,6 +154,35 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* Learning Paths */}
+        {learningPaths.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Learning Paths</Text>
+            </View>
+            {learningPaths.map((path) => (
+              <TouchableOpacity 
+                key={path.id} 
+                style={styles.pathSummaryCard}
+                onPress={() => router.push(`/learning-path/${path.id}`)}
+              >
+                <View style={styles.pathSummaryInfo}>
+                  <View style={styles.pathSummaryIcon}>
+                    <Map size={24} color="#6366f1" />
+                  </View>
+                  <View>
+                    <Text style={styles.pathSummaryTitle}>{path.title}</Text>
+                    <Text style={styles.pathSummaryMeta}>
+                      {path.course_ids.length} Courses
+                    </Text>
+                  </View>
+                </View>
+                <ChevronRight size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -350,39 +324,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366f1',
     borderRadius: 3,
   },
-  pathCard: {
-    width: 200,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-  },
-  pathIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#eef2ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  pathTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  pathDescription: {
-    fontSize: 13,
-    color: '#64748b',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  pathCourses: {
-    fontSize: 12,
-    color: '#6366f1',
-    fontWeight: '600',
-  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -412,5 +353,42 @@ const styles = StyleSheet.create({
   gridItem: {
     width: '33.33%',
     padding: 6,
+  },
+  pathSummaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  pathSummaryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  pathSummaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#f5f3ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pathSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  pathSummaryMeta: {
+    fontSize: 13,
+    color: '#64748b',
   },
 });

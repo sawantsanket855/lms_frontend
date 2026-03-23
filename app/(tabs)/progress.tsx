@@ -78,7 +78,7 @@ export default function ProgressScreen() {
             <Text style={styles.statNumber}>
               {dashboardData?.total_modules_completed || 0}
             </Text>
-            <Text style={styles.statLabel}>Sessions Done</Text>
+            <Text style={styles.statLabel}>Modules Done</Text>
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: '#fef3c7' }]}>
@@ -112,9 +112,6 @@ export default function ProgressScreen() {
               >
                 <View style={styles.progressHeader}>
                   <Text style={styles.progressTitle}>{stat.course_title}</Text>
-                  <Text style={styles.progressPercent}>
-                    {Math.round(stat.progress_percentage)}%
-                  </Text>
                 </View>
                 <View style={styles.progressBar}>
                   <View
@@ -125,7 +122,7 @@ export default function ProgressScreen() {
                   />
                 </View>
                 <Text style={styles.progressModules}>
-                  {stat.completed_sessions} of {stat.total_sessions} sessions completed
+                  {stat.completed_modules || 0} of {stat.total_modules || 0} modules completed
                 </Text>
               </TouchableOpacity>
             ))

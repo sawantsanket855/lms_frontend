@@ -2,13 +2,16 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Home, Book, BarChart2, Users, User } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
+import { TopAppBar } from '../../src/components/TopAppBar';
 
 export default function TabLayout() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
 
   return (
-    <Tabs
+    <>
+      <TopAppBar />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#6366f1',
@@ -38,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="courses"
         options={{
-          title: 'Courses',
+          title: 'My Courses',
           tabBarIcon: ({ color, size }) => (
             <Book size={size} color={color} />
           ),
@@ -71,7 +74,36 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="course/[id]"
+        options={{
+          href: null,
+          title: 'Course',
+        }}
+      />
+      <Tabs.Screen
+        name="session/[id]"
+        options={{
+          href: null,
+          title: 'Session',
+        }}
+      />
+      <Tabs.Screen
+        name="quiz/[id]"
+        options={{
+          href: null,
+          title: 'Quiz',
+        }}
+      />
+      <Tabs.Screen
+        name="learning-path/[id]"
+        options={{
+          href: null,
+          title: 'Learning Path',
+        }}
+      />
     </Tabs>
+    </>
   );
 }
 

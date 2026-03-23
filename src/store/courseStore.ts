@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import api from '../services/api';
-import { Course, LearningPath, UserProgress, Quiz, Discussion, ExpertQuestion, Certificate, Notification, Session } from '../types';
+import { Course, LearningPath, UserProgress, Quiz, Discussion, ExpertQuestion, Certificate, Notification, Session, CertificateTemplate } from '../types';
 
 interface CourseState {
   courses: Course[];
@@ -13,6 +13,10 @@ interface CourseState {
   certificates: Certificate[];
   notifications: Notification[];
   sessions: Record<string, Session[]>; // module_id -> sessions
+  certificateTemplates: CertificateTemplate[];
+  issuedCertificates: any[];
+  userCourses: any[];
+  userLearningPaths: any[];
   isLoading: boolean;
 
   // Course actions
@@ -40,6 +44,8 @@ interface CourseState {
   fetchLearningPaths: () => Promise<void>;
   fetchRecommendedPaths: () => Promise<LearningPath[]>;
   createLearningPath: (data: Partial<LearningPath>) => Promise<LearningPath>;
+  updateLearningPath: (id: string, data: Partial<LearningPath>) => Promise<LearningPath>;
+  deleteLearningPath: (id: string) => Promise<void>;
 
   // Progress actions
   fetchProgress: () => Promise<void>;
@@ -51,7 +57,10 @@ interface CourseState {
   fetchQuizzes: (courseId?: string) => Promise<void>;
   fetchQuiz: (id: string) => Promise<Quiz>;
   createQuiz: (data: Partial<Quiz>) => Promise<Quiz>;
-  submitQuiz: (quizId: string, answers: Record<string, number>) => Promise<any>;
+  updateQuiz: (id: string, data: Partial<Quiz>) => Promise<Quiz>;
+  deleteQuiz: (id: string) => Promise<void>;
+  submitQuiz: (quizId: string, answers: Record<string, number>, sessionId?: string) => Promise<any>;
+  fetchQuizResult: (quizId: string, sessionId?: string) => Promise<any>;
 
   // Discussion actions
   fetchDiscussions: (courseId?: string) => Promise<void>;
@@ -65,12 +74,35 @@ interface CourseState {
 
   // Certificate actions
   fetchCertificates: () => Promise<void>;
+  fetchCertificateTemplates: () => Promise<void>;
+  createCertificateTemplate: (data: Partial<CertificateTemplate>) => Promise<CertificateTemplate>;
+  updateCertificateTemplate: (id: string, data: Partial<CertificateTemplate>) => Promise<CertificateTemplate>;
+  deleteCertificateTemplate: (id: string) => Promise<void>;
+
+  // Issuance actions
+  fetchUserCertificates: (uid: string) => Promise<void>;
+  issueCertificate: (data: any) => Promise<void>;
+  fetchCertificateById: (id: string) => Promise<any>;
 
   // Notification actions
   fetchNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
 
+  // Admin User management
+  fetchAdminUsers: (page?: number, limit?: number, search?: string, role?: string) => Promise<any>;
+  fetchUserCourses: (userId: string) => Promise<void>;
+  assignCourse: (userId: string, courseId: string) => Promise<void>;
+  assignLearningPath: (userId: string, pathId: string) => Promise<void>;
+  unassignLearningPath: (userId: string, pathId: string) => Promise<void>;
+  unassignCourse: (userId: string, courseId: string) => Promise<void>;
+  fetchCourseUsers: (courseId: string) => Promise<any[]>;
+  assignUserToCourse: (courseId: string, userId: string) => Promise<void>;
+  unassignUserFromCourse: (courseId: string, userId: string) => Promise<void>;
+  updateCourseAccessStatus: (userId: string, courseId: string, status: 'active' | 'frozen' | 'blocked') => Promise<void>;
+  updatePathAccessStatus: (userId: string, pathId: string, status: 'active' | 'blocked') => Promise<void>;
+  fetchStudentProgress: (userId: string, courseId: string) => Promise<any[]>;
+  fetchPathProgress: (userId: string, pathId: string) => Promise<any[]>;
 }
 
 export const useCourseStore = create<CourseState>((set, get) => ({
@@ -84,6 +116,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   certificates: [],
   notifications: [],
   sessions: {},
+  certificateTemplates: [],
+  issuedCertificates: [],
+  userCourses: [],
+  userLearningPaths: [],
   isLoading: false,
 
   fetchCourses: async (filters) => {
@@ -207,6 +243,21 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return response.data;
   },
 
+  updateLearningPath: async (id, data) => {
+    const response = await api.put(`/learning-paths/${id}`, data);
+    set((state) => ({
+      learningPaths: state.learningPaths.map((lp) => (lp.id === id ? response.data : lp)),
+    }));
+    return response.data;
+  },
+
+  deleteLearningPath: async (id) => {
+    await api.delete(`/learning-paths/${id}`);
+    set((state) => ({
+      learningPaths: state.learningPaths.filter((lp) => lp.id !== id),
+    }));
+  },
+
   reorderModules: async (courseId, moduleIds) => {
     const response = await api.put(`/courses/${courseId}/modules/reorder`, { ids: moduleIds });
     set({ currentCourse: response.data });
@@ -232,13 +283,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     await get().fetchProgress();
   },
 
-  fetchCourseProgress: async (courseId) => {
+  fetchCourseProgress: async (courseId: string) => {
     const response = await api.get(`/progress/course/${courseId}`);
     return response.data;
   },
 
   fetchDashboard: async () => {
-    const response = await api.get('/progress/dashboard');
+    const response = await api.get('/progress/dashboard/v2');
     return response.data;
   },
 
@@ -259,12 +310,41 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return response.data;
   },
 
-  submitQuiz: async (quizId, answers) => {
+  updateQuiz: async (id, data) => {
+    const response = await api.put(`/quizzes/${id}`, data);
+    const updatedQuiz = response.data;
+    set((state) => ({
+      quizzes: state.quizzes.map((q) => (q.id === id ? updatedQuiz : q)),
+    }));
+    return updatedQuiz;
+  },
+
+  deleteQuiz: async (id) => {
+    await api.delete(`/quizzes/${id}`);
+    set((state) => ({
+      quizzes: state.quizzes.filter((q) => q.id !== id),
+    }));
+  },
+
+  submitQuiz: async (quizId, answers, sessionId) => {
+    const payload = sessionId ? { ...answers, session_id: sessionId } : answers;
     const response = await api.post(`/quizzes/${quizId}/submit`, {
       quiz_id: quizId,
-      answers,
+      answers: payload,
     });
     return response.data;
+  },
+
+  fetchQuizResult: async (quizId, sessionId) => {
+    const params = sessionId ? `?session_id=${sessionId}` : '';
+    const response = await api.get(`/quizzes/${quizId}/result${params}`);
+    return response.data;
+  },
+
+  fetchCompletedQuizzes: async (courseId?: string) => {
+    const params = courseId ? `?course_id=${courseId}` : '';
+    const response = await api.get(`/quizzes/completed${params}`);
+    return response.data.completed_quiz_ids || [];
   },
 
   fetchDiscussions: async (courseId) => {
@@ -313,6 +393,53 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set({ certificates: response.data });
   },
 
+  fetchCertificateTemplates: async () => {
+    const response = await api.get('/admin/certificate-templates');
+    set({ certificateTemplates: response.data });
+  },
+
+  createCertificateTemplate: async (data) => {
+    const response = await api.post('/admin/certificate-templates', data);
+    set((state) => ({ 
+      certificateTemplates: [response.data, ...state.certificateTemplates] 
+    }));
+    return response.data;
+  },
+
+  deleteCertificateTemplate: async (id) => {
+    await api.delete(`/admin/certificate-templates/${id}`);
+    set((state) => ({
+      certificateTemplates: state.certificateTemplates.filter((t) => t.id !== id),
+    }));
+  },
+
+  updateCertificateTemplate: async (id, data) => {
+    const response = await api.put(`/admin/certificate-templates/${id}`, data);
+    set((state) => ({
+      certificateTemplates: state.certificateTemplates.map((t) =>
+        t.id === id ? response.data : t
+      ),
+    }));
+    return response.data;
+  },
+
+  fetchUserCertificates: async (uid) => {
+    const response = await api.get(`/admin/users/${uid}/certificates`);
+    set({ issuedCertificates: response.data });
+  },
+
+  issueCertificate: async (data) => {
+    const response = await api.post('/admin/certificates/issue', data);
+    set((state) => ({
+      issuedCertificates: [response.data, ...state.issuedCertificates]
+    }));
+  },
+
+  fetchCertificateById: async (id: string) => {
+    const response = await api.get(`/certificates/${id}`);
+    return response.data;
+  },
+
   fetchNotifications: async () => {
     const response = await api.get('/notifications');
     set({ notifications: response.data });
@@ -332,5 +459,70 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
     }));
+  },
+
+  fetchAdminUsers: async (page = 1, limit = 10, search = '', role = '') => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (role) params.append('role', role);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    const response = await api.get(`/admin/users?${params.toString()}`);
+    return response.data;
+  },
+
+  fetchUserCourses: async (userId: string) => {
+    const response = await api.get(`/admin/users/${userId}/courses`);
+    set({ 
+      userCourses: response.data.courses, 
+      userLearningPaths: response.data.learning_paths 
+    });
+  },
+
+  assignCourse: async (userId: string, courseId: string) => {
+    await api.post(`/admin/users/${userId}/courses`, { course_id: courseId });
+  },
+
+  assignLearningPath: async (userId, pathId) => {
+    await api.post(`/admin/users/${userId}/learning-paths`, { path_id: pathId });
+  },
+
+  unassignLearningPath: async (userId, pathId) => {
+    await api.delete(`/admin/users/${userId}/learning-paths/${pathId}`);
+  },
+
+  unassignCourse: async (userId: string, courseId: string) => {
+    await api.delete(`/admin/users/${userId}/courses/${courseId}`);
+  },
+
+  fetchCourseUsers: async (courseId: string) => {
+    const response = await api.get(`/admin/courses/${courseId}/users`);
+    return response.data;
+  },
+
+  assignUserToCourse: async (courseId: string, userId: string) => {
+    await api.post(`/admin/courses/${courseId}/users`, { user_id: userId });
+  },
+
+  unassignUserFromCourse: async (courseId, userId) => {
+    await api.delete(`/admin/users/${userId}/courses/${courseId}`);
+  },
+
+  updateCourseAccessStatus: async (userId, courseId, status) => {
+    await api.post(`/admin/users/${userId}/courses/${courseId}/status`, { status });
+  },
+
+  updatePathAccessStatus: async (userId, pathId, status) => {
+    await api.post(`/admin/users/${userId}/learning-paths/${pathId}/status`, { status });
+  },
+
+  fetchStudentProgress: async (userId, courseId) => {
+    const response = await api.get(`/admin/users/${userId}/courses/${courseId}/progress`);
+    return response.data;
+  },
+
+  fetchPathProgress: async (userId, pathId) => {
+    const response = await api.get(`/admin/users/${userId}/learning-paths/${pathId}/progress`);
+    return response.data;
   },
 }));

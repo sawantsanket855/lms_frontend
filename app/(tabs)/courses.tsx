@@ -23,9 +23,20 @@ export default function CoursesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+
+  const loadData = async () => {
+    try {
+      await fetchCourses();
+      const dashboard = await useCourseStore.getState().fetchDashboard();
+      setDashboardData(dashboard);
+    } catch (error) {
+      console.error('Error loading courses data:', error);
+    }
+  };
 
   useEffect(() => {
-    fetchCourses();
+    loadData();
   }, []);
 
   const handleSearch = () => {
@@ -41,7 +52,7 @@ export default function CoursesScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchCourses();
+    await loadData();
     setRefreshing(false);
   };
 
@@ -116,20 +127,32 @@ export default function CoursesScreen() {
       >
         {isLoading ? (
           <LoadingSpinner />
-        ) : courses.length > 0 ? (
-          courses.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              onPress={() => router.push(`/course/${course.id}`)}
-            />
-          ))
+        ) : (dashboardData?.course_stats || []).length > 0 ? (
+          <View style={styles.gridContainer}>
+            {dashboardData.course_stats.map((stat: any) => {
+              const course = courses.find((c) => c.id === stat.course_id);
+              if (!course) return null;
+              
+              return (
+                <View key={course.id} style={styles.gridItem}>
+                  <CourseCard
+                    course={course}
+                    onPress={() => router.push(`/course/${course.id}`)}
+                    progress={stat.progress_percentage}
+                    isCompleted={stat.is_completed}
+                    totalModules={stat.total_modules}
+                    completedModules={stat.completed_modules}
+                  />
+                </View>
+              );
+            })}
+          </View>
         ) : (
           <View style={styles.emptyState}>
             <Search size={48} color="#cbd5e1" />
-            <Text style={styles.emptyTitle}>No courses found</Text>
+            <Text style={styles.emptyTitle}>No assigned courses</Text>
             <Text style={styles.emptyText}>
-              Try adjusting your search or filters
+              You haven't been assigned any courses yet.
             </Text>
           </View>
         )}
@@ -223,5 +246,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     marginTop: 4,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  gridItem: {
+    width: '33.33%',
+    padding: 6,
   },
 });

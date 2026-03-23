@@ -32,6 +32,7 @@ import {
   Edit,
   ArrowUp,
   ArrowDown,
+  FileQuestion,
 } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
@@ -61,6 +62,7 @@ export default function CourseEditor() {
     quizzes,
     fetchQuizzes,
     createQuiz,
+    deleteQuiz,
   } = useCourseStore();
 
   const [isLoading, setIsLoading] = useState(!!id);
@@ -364,6 +366,7 @@ export default function CourseEditor() {
     // Note: Can't pre-fill file input, user has to re-select if they want to change it
     setIsEditingSession(true);
     setCurrentSessionId(session.id);
+    setSelectedQuizId(session.quiz_id || null);
     setShowSessionModal(true);
   };
 
@@ -510,6 +513,24 @@ export default function CourseEditor() {
     }
   };
 
+  const handleDeleteQuiz = (quizId: string) => {
+    showConfirm({
+      title: 'Delete Quiz',
+      message: 'Are you sure you want to delete this quiz?',
+      confirmText: 'Delete',
+      confirmStyle: 'destructive',
+      onConfirm: async () => {
+        try {
+          await deleteQuiz(quizId);
+          showNotification('Success', 'Quiz deleted successfully');
+        } catch (error: any) {
+          const msg = error.response?.data?.detail || error.message || 'Failed to delete quiz';
+          showNotification('Error', msg, 'destructive');
+        }
+      },
+    });
+  };
+
   if (isLoading) {
     return <LoadingSpinner fullScreen message="Loading course..." />;
   }
@@ -632,6 +653,63 @@ export default function CourseEditor() {
               ))}
             </View>
           </View>
+
+          {/* Quizzes */}
+          {courseId && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Quizzes</Text>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => router.push(`/admin/quiz-editor?courseId=${courseId}`)}
+                >
+                  <Plus size={20} color="#fff" />
+                  <Text style={styles.addButtonText}>Add Quiz</Text>
+                </TouchableOpacity>
+              </View>
+
+              {quizzes.length > 0 ? (
+                quizzes.map((quiz) => (
+                  <TouchableOpacity
+                    key={quiz.id}
+                    style={styles.listItem}
+                    onPress={() => router.push(`/admin/quiz-editor?id=${quiz.id}`)}
+                  >
+                    <View style={styles.listItemIcon}>
+                      <FileQuestion size={20} color="#6366f1" />
+                    </View>
+                    <View style={styles.listItemContent}>
+                      <Text style={styles.listItemTitle}>{quiz.title}</Text>
+                      <Text style={styles.listItemMeta}>
+                        {quiz.questions ? quiz.questions.length : 0} Questions · {quiz.time_limit_minutes} min
+                        {quiz.session_id ? ' · Assigned to Session' : ' · Standalone'}
+                      </Text>
+                    </View>
+                    <View style={styles.moduleActions}>
+                      <TouchableOpacity
+                        onPress={() => router.push(`/admin/quiz-editor?id=${quiz.id}`)}
+                        style={styles.actionIcon}
+                      >
+                        <Edit size={18} color="#6366f1" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteQuiz(quiz.id)}
+                        style={styles.actionIcon}
+                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Trash2 size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyModules}>
+                  <FileQuestion size={32} color="#cbd5e1" />
+                  <Text style={styles.emptyText}>No quizzes created for this course yet.</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Modules */}
           {courseId && (
@@ -923,28 +1001,46 @@ export default function CourseEditor() {
 
                   {quizzes.length > 0 ? (
                     <ScrollView style={styles.quizList} nestedScrollEnabled>
-                      {quizzes.map((quiz) => (
-                        <TouchableOpacity
-                          key={quiz.id}
-                          style={[
-                            styles.quizOption,
-                            selectedQuizId === quiz.id && styles.quizOptionSelected,
-                          ]}
-                          onPress={() => setSelectedQuizId(quiz.id)}
-                        >
-                          <Text
+                      {quizzes.map((quiz) => {
+                        // Check if this quiz is already used by a different session
+                        const usedBySession = Object
+                          .values(sessions)
+                          .flat()
+                          .find((s: any) => s.quiz_id === quiz.id && s.id !== currentSessionId);
+                        const isUsedElsewhere = !!usedBySession;
+                        return (
+                          <TouchableOpacity
+                            key={quiz.id}
                             style={[
-                              styles.quizOptionText,
-                              selectedQuizId === quiz.id && styles.quizOptionTextSelected,
+                              styles.quizOption,
+                              selectedQuizId === quiz.id && styles.quizOptionSelected,
+                              isUsedElsewhere && styles.quizOptionDisabled,
                             ]}
+                            onPress={() => {
+                              if (isUsedElsewhere) return;
+                              setSelectedQuizId(quiz.id);
+                            }}
+                            activeOpacity={isUsedElsewhere ? 1 : 0.7}
                           >
-                            {quiz.title}
-                          </Text>
-                          {selectedQuizId === quiz.id && (
-                            <View style={styles.selectedDot} />
-                          )}
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              style={[
+                                styles.quizOptionText,
+                                selectedQuizId === quiz.id && styles.quizOptionTextSelected,
+                                isUsedElsewhere && styles.quizOptionTextDisabled,
+                              ]}
+                            >
+                              {quiz.title}
+                            </Text>
+                            {isUsedElsewhere ? (
+                              <View style={styles.quizUsedBadge}>
+                                <Text style={styles.quizUsedBadgeText}>Already used</Text>
+                              </View>
+                            ) : selectedQuizId === quiz.id ? (
+                              <View style={styles.selectedDot} />
+                            ) : null}
+                          </TouchableOpacity>
+                        );
+                      })}
                     </ScrollView>
                   ) : (
                     <Text style={styles.noQuizzesText}>No quizzes available.</Text>
@@ -1179,6 +1275,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+    marginLeft: 8,
   },
   moduleItem: {
     flexDirection: 'row',
@@ -1187,6 +1284,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  listItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#eef2ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  listItemContent: {
+    flex: 1,
+  },
+  listItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  listItemMeta: {
+    fontSize: 13,
+    color: '#64748b',
   },
   moduleNumber: {
     width: 32,
@@ -1513,6 +1642,26 @@ const styles = StyleSheet.create({
   quizOptionTextSelected: {
     color: '#2563eb',
     fontWeight: '600',
+  },
+  quizOptionDisabled: {
+    opacity: 0.55,
+    backgroundColor: '#f8fafc',
+  },
+  quizOptionTextDisabled: {
+    color: '#94a3b8',
+  },
+  quizUsedBadge: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+  },
+  quizUsedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#92400e',
   },
   selectedDot: {
     width: 8,

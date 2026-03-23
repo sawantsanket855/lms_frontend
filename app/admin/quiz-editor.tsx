@@ -17,15 +17,13 @@ import { useCourseStore } from '../../src/store/courseStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 
 export default function QuizEditor() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, courseId } = useLocalSearchParams<{ id?: string, courseId?: string }>();
   const router = useRouter();
-  const { courses, fetchCourses, createQuiz, fetchSessions, sessions } = useCourseStore();
+  const { courses, fetchCourses, createQuiz, updateQuiz, fetchQuiz } = useCourseStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [selectedModuleId, setSelectedModuleId] = useState('');
-  const [selectedSessionId, setSelectedSessionId] = useState('');
   const [title, setTitle] = useState('');
   const [passingScore, setPassingScore] = useState('70');
   const [timeLimit, setTimeLimit] = useState('30');
@@ -42,27 +40,30 @@ export default function QuizEditor() {
   useEffect(() => {
     const load = async () => {
       await fetchCourses();
+      
+      if (id) {
+        try {
+          const quiz = await fetchQuiz(id);
+          setTitle(quiz.title);
+          setSelectedCourseId(quiz.course_id);
+          setPassingScore(String(quiz.passing_score || '70'));
+          setTimeLimit(String(quiz.time_limit_minutes || '30'));
+          setQuestions(quiz.questions || []);
+        } catch (error) {
+          console.error('Error fetching quiz:', error);
+          Alert.alert('Error', 'Failed to load quiz data');
+        }
+      } else if (courseId) {
+        setSelectedCourseId(courseId);
+      } else {
+        // Enforce courseId
+        Alert.alert('Error', 'No course specified', [{ text: 'Go Back', onPress: () => router.back() }]);
+      }
       setIsLoading(false);
     };
     load();
-  }, []);
+  }, [id, courseId]);
 
-  useEffect(() => {
-    if (selectedCourseId && selectedModuleId && !sessions[selectedModuleId]) {
-      fetchSessions(selectedCourseId, selectedModuleId);
-    }
-  }, [selectedCourseId, selectedModuleId]);
-
-  const handleCourseChange = (courseId: string) => {
-    setSelectedCourseId(courseId);
-    setSelectedModuleId('');
-    setSelectedSessionId('');
-  };
-
-  const handleModuleChange = (moduleId: string) => {
-    setSelectedModuleId(moduleId);
-    setSelectedSessionId('');
-  };
 
   const handleAddQuestion = () => {
     setQuestions((prev) => [
@@ -108,15 +109,7 @@ export default function QuizEditor() {
 
   const handleSave = async () => {
     if (!selectedCourseId) {
-      Alert.alert('Error', 'Please select a course');
-      return;
-    }
-    if (!selectedModuleId) {
-      Alert.alert('Error', 'Please select a module');
-      return;
-    }
-    if (!selectedSessionId) {
-      Alert.alert('Error', 'Please select a session');
+      Alert.alert('Error', 'Course ID is missing');
       return;
     }
     if (!title) {
@@ -142,35 +135,43 @@ export default function QuizEditor() {
     try {
       console.log('Saving quiz:', {
         course_id: selectedCourseId,
-        module_id: selectedModuleId,
-        session_id: selectedSessionId,
         title,
       });
 
-      const response = await createQuiz({
+      const quizData = {
         course_id: selectedCourseId,
-        module_id: selectedModuleId,
-        session_id: selectedSessionId,
         title,
         passing_score: parseInt(passingScore),
         time_limit_minutes: parseInt(timeLimit),
         questions: questions.map((q) => ({
           ...q,
-          id: undefined, // Let backend generate ID
+          id: id ? q.id : undefined,
         })),
-      });
+      };
+
+      let response;
+      if (id) {
+        response = await updateQuiz(id, quizData);
+      } else {
+        response = await createQuiz(quizData);
+      }
 
       console.log('Quiz saved successfully:', response);
 
-      Alert.alert('Success', 'Quiz created successfully', [
-        {
-          text: 'OK',
-          onPress: () => {
-            console.log('Alert OK pressed, navigating back');
-            router.back();
-          }
-        },
-      ]);
+      if (Platform.OS === 'web') {
+        window.alert(`Quiz ${id ? 'updated' : 'created'} successfully`);
+        router.back();
+      } else {
+        Alert.alert('Success', `Quiz ${id ? 'updated' : 'created'} successfully`, [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('Alert OK pressed, navigating back');
+              router.back();
+            }
+          },
+        ]);
+      }
     } catch (error: any) {
       console.error('Error saving quiz:', error);
       Alert.alert('Error', error.response?.data?.detail || error.message || 'Failed to create quiz');
@@ -194,7 +195,7 @@ export default function QuizEditor() {
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color="#1e293b" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Quiz</Text>
+          <Text style={styles.headerTitle}>{id ? 'Edit Quiz' : 'Create Quiz'}</Text>
           <TouchableOpacity
             style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
@@ -211,96 +212,11 @@ export default function QuizEditor() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quiz Details</Text>
 
-            <Text style={styles.label}>Course</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.courseList}
-            >
-              {courses.map((course) => (
-                <TouchableOpacity
-                  key={course.id}
-                  style={[
-                    styles.courseChip,
-                    selectedCourseId === course.id && styles.courseChipSelected,
-                  ]}
-                  onPress={() => handleCourseChange(course.id)}
-                >
-                  <Text
-                    style={[
-                      styles.courseChipText,
-                      selectedCourseId === course.id && styles.courseChipTextSelected,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {course.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {selectedCourseId && (
-              <>
-                <Text style={styles.label}>Module</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.courseList}
-                >
-                  {courses.find((c) => c.id === selectedCourseId)?.modules.map((module) => (
-                    <TouchableOpacity
-                      key={module.id}
-                      style={[
-                        styles.courseChip,
-                        selectedModuleId === module.id && styles.courseChipSelected,
-                      ]}
-                      onPress={() => handleModuleChange(module.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.courseChipText,
-                          selectedModuleId === module.id && styles.courseChipTextSelected,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {module.title}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            )}
-
-            {selectedModuleId && (
-              <>
-                <Text style={styles.label}>Session</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.courseList}
-                >
-                  {(sessions[selectedModuleId] || []).map((session) => (
-                    <TouchableOpacity
-                      key={session.id}
-                      style={[
-                        styles.courseChip,
-                        selectedSessionId === session.id && styles.courseChipSelected,
-                      ]}
-                      onPress={() => setSelectedSessionId(session.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.courseChipText,
-                          selectedSessionId === session.id && styles.courseChipTextSelected,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {session.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
+            {selectedCourseId && courses.find(c => c.id === selectedCourseId) && (
+              <View style={styles.scopedCourseInfo}>
+                <Text style={styles.scopedCourseLabel}>Course:</Text>
+                <Text style={styles.scopedCourseTitle}>{courses.find(c => c.id === selectedCourseId)?.title}</Text>
+              </View>
             )}
 
             <Text style={styles.label}>Quiz Title</Text>
@@ -480,28 +396,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1e293b',
   },
-  courseList: {
-    maxHeight: 50,
-  },
-  courseChip: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 8,
-    maxWidth: 200,
-  },
-  courseChipSelected: {
-    backgroundColor: '#6366f1',
-  },
-  courseChipText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  courseChipTextSelected: {
-    color: '#fff',
-  },
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -585,5 +479,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e293b',
     padding: 0,
+  },
+  scopedCourseInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  scopedCourseLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e40af',
+    marginRight: 8,
+  },
+  scopedCourseTitle: {
+    fontSize: 14,
+    color: '#1e40af',
+    flex: 1,
   },
 });

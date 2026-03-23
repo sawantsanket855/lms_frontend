@@ -1,8 +1,11 @@
 import { Stack } from 'expo-router';
+import { TopAppBar } from '../../src/components/TopAppBar';
 
 export default function AdminLayout() {
   return (
-    <Stack>
+    <>
+      <TopAppBar />
+      <Stack>
       <Stack.Screen
         name="index"
         options={{
@@ -32,5 +35,6 @@ export default function AdminLayout() {
         }}
       />
     </Stack>
+    </>
   );
 }

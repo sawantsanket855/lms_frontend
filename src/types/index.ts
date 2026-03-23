@@ -50,6 +50,7 @@ export interface Course {
   is_published: boolean;
   total_duration?: number;
   module_count?: number;
+  is_assigned?: boolean;
 }
 
 export interface LearningPath {
@@ -154,5 +155,22 @@ export interface Notification {
   message: string;
   notification_type: string;
   read: boolean;
+  created_at: string;
+}
+export interface Placeholder {
+  type: 'student_name' | 'course_title' | 'date' | 'other';
+  x: number;
+  y: number;
+  fontSize: number;
+  color?: string;
+  label?: string;
+}
+
+export interface CertificateTemplate {
+  id: string;
+  name: string;
+  background_media_id: string;
+  placeholders: Placeholder[];
+  created_by: string;
   created_at: string;
 }

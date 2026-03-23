@@ -8,13 +8,15 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Book } from 'lucide-react-native';
+import { ArrowLeft, Book, Info } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
+import api from '../../src/services/api';
 
 const INTERESTS = [
   'Programming',
@@ -32,7 +34,7 @@ const INTERESTS = [
 export default function LearningPathEditor() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-  const { courses, fetchCourses, createLearningPath } = useCourseStore();
+  const { courses, fetchCourses, createLearningPath, updateLearningPath } = useCourseStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,13 +43,64 @@ export default function LearningPathEditor() {
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [targetInterests, setTargetInterests] = useState<string[]>([]);
 
+  // Custom Confirmation Modal State
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }>({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }) => {
+    setConfirmModalConfig(config);
+    setConfirmModalVisible(true);
+  };
+
+  const showNotification = (title: string, message: string, style: 'primary' | 'destructive' = 'primary', onConfirm?: () => void) => {
+    showConfirm({
+      title,
+      message,
+      confirmText: 'OK',
+      confirmStyle: style,
+      onConfirm: onConfirm || (() => {}),
+      singleButton: true
+    });
+  };
+
   useEffect(() => {
     const load = async () => {
       await fetchCourses();
+      if (id) {
+        try {
+          const response = await api.get(`/learning-paths/${id}`);
+          const path = response.data;
+          setTitle(path.title);
+          setDescription(path.description);
+          setSelectedCourses(path.course_ids || []);
+          setTargetInterests(path.target_interests || []);
+        } catch (error) {
+          console.error('Error fetching learning path:', error);
+          showNotification('Error', 'Failed to load learning path', 'destructive');
+        }
+      }
       setIsLoading(false);
     };
     load();
-  }, []);
+  }, [id]);
 
   const toggleCourse = (courseId: string) => {
     setSelectedCourses((prev) =>
@@ -67,31 +120,39 @@ export default function LearningPathEditor() {
 
   const handleSave = async () => {
     if (!title) {
-      Alert.alert('Error', 'Please enter a title');
+      showNotification('Error', 'Please enter a title', 'destructive');
       return;
     }
     if (!description) {
-      Alert.alert('Error', 'Please enter a description');
+      showNotification('Error', 'Please enter a description', 'destructive');
       return;
     }
     if (selectedCourses.length === 0) {
-      Alert.alert('Error', 'Please select at least one course');
+      showNotification('Error', 'Please select at least one course', 'destructive');
       return;
     }
 
     setIsSaving(true);
     try {
-      await createLearningPath({
-        title,
-        description,
-        course_ids: selectedCourses,
-        target_interests: targetInterests,
-      });
-      Alert.alert('Success', 'Learning path created successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      if (id) {
+        await updateLearningPath(id, {
+          title,
+          description,
+          course_ids: selectedCourses,
+          target_interests: targetInterests,
+        });
+        showNotification('Success', 'Path is updated', 'primary', () => router.back());
+      } else {
+        await createLearningPath({
+          title,
+          description,
+          course_ids: selectedCourses,
+          target_interests: targetInterests,
+        });
+        showNotification('Success', 'Path is created', 'primary', () => router.back());
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create learning path');
+      showNotification('Error', error.message || `Failed to ${id ? 'update' : 'create'} learning path`, 'destructive');
     } finally {
       setIsSaving(false);
     }
@@ -112,7 +173,7 @@ export default function LearningPathEditor() {
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color="#1e293b" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Learning Path</Text>
+          <Text style={styles.headerTitle}>{id ? 'Edit Learning Path' : 'Create Learning Path'}</Text>
           <TouchableOpacity
             style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
@@ -229,6 +290,49 @@ export default function LearningPathEditor() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmIconContainer}>
+              <Info size={32} color={confirmModalConfig.confirmStyle === 'destructive' ? "#ef4444" : "#6366f1"} />
+            </View>
+            <Text style={styles.confirmTitle}>{confirmModalConfig.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmModalConfig.message}</Text>
+
+            <View style={styles.confirmButtons}>
+              {!confirmModalConfig.singleButton && (
+                <TouchableOpacity
+                  style={styles.confirmButtonCancel}
+                  onPress={() => setConfirmModalVisible(false)}
+                >
+                  <Text style={styles.confirmButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.confirmButtonConfirm,
+                  confirmModalConfig.confirmStyle === 'destructive' && styles.confirmButtonDestructive,
+                  confirmModalConfig.singleButton && { flex: 1 }
+                ]}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  confirmModalConfig.onConfirm();
+                }}
+              >
+                <Text style={styles.confirmButtonConfirmText}>
+                  {confirmModalConfig.confirmText || 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -392,5 +496,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmButtonCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  confirmButtonCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  confirmButtonConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  confirmButtonDestructive: {
+    backgroundColor: '#ef4444',
+  },
+  confirmButtonConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -1,14 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Book, Layers, Clock } from 'lucide-react-native';
+import { Book, Layers, Clock, CheckCircle } from 'lucide-react-native';
 import { Course } from '../types';
 import { getMediaUrl } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 interface CourseCardProps {
   course: Course;
   onPress: () => void;
   progress?: number;
+  isCompleted?: boolean;
   showStatus?: boolean;
+  totalModules?: number;
+  completedModules?: number;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -17,13 +21,29 @@ const difficultyColors: Record<string, string> = {
   advanced: '#ef4444',
 };
 
-export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progress, showStatus }) => {
+export const CourseCard: React.FC<CourseCardProps> = ({ 
+  course, 
+  onPress, 
+  progress, 
+  isCompleted, 
+  showStatus,
+  totalModules,
+  completedModules
+}) => {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+  const isLocked = !isAdmin && !course.is_assigned;
+
   const thumbnailUri = course.thumbnail_id
     ? getMediaUrl(course.thumbnail_id)
     : course.thumbnail;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.thumbnail}>
         {thumbnailUri ? (
           <Image source={{ uri: thumbnailUri }} style={styles.thumbnailImage} />
@@ -55,6 +75,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progres
             </Text>
           </View>
         )}
+        {isCompleted && (
+          <View style={styles.completedBadge}>
+            <CheckCircle size={12} color="#fff" />
+            <Text style={styles.completedBadgeText}>Completed</Text>
+          </View>
+        )}
       </View>
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={2}>
@@ -77,9 +103,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPress, progres
         {progress !== undefined && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%`, backgroundColor: isCompleted ? '#16a34a' : '#22c55e' }]} />
             </View>
-            <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+            <Text style={[styles.progressText, isCompleted && styles.progressTextCompleted]}>
+              {totalModules !== undefined ? `${completedModules || 0}/${totalModules} Modules` : (isCompleted ? '100%' : `${Math.round(progress)}%`)}
+            </Text>
           </View>
         )}
       </View>
@@ -194,22 +222,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 12,
   },
   progressBar: {
-    width: 60,
-    height: 6,
+    flex: 1,
+    height: 10,
     backgroundColor: '#e2e8f0',
-    borderRadius: 3,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6366f1',
-    borderRadius: 3,
+    backgroundColor: '#22c55e',
+    borderRadius: 5,
   },
   progressText: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '600',
+  },
+  progressTextCompleted: {
+    color: '#16a34a',
+    fontWeight: '700',
+  },
+  completedBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: '#16a34a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  completedBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardLocked: {
+    opacity: 0.8,
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(241, 245, 249, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  lockIconBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#fff',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
 });
