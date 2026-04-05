@@ -8,7 +8,7 @@ import api from "./api";
  * @param fileName - The name of the file.
  * @returns The ID of the stored media file.
  */
-export const uploadFile = async (fileUri: string, fileName: string, fileObj?: any): Promise<string> => {
+export const uploadFile = async (fileUri: string, fileName: string, fileObj?: any, onProgress?: (pct: number) => void): Promise<string> => {
     try {
         const formData = new FormData();
 
@@ -50,7 +50,13 @@ export const uploadFile = async (fileUri: string, fileName: string, fileObj?: an
 
         const response = await api.post('/media/upload', formData, {
             headers,
-            // Add onUploadProgress if needed for UI feedback
+            timeout: 600000, // 10 minutes timeout for large video files
+            onUploadProgress: (progressEvent) => {
+                if (onProgress && progressEvent.total) {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    onProgress(percentCompleted);
+                }
+            },
         });
 
         return response.data.id;
