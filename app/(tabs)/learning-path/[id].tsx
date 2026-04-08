@@ -23,6 +23,8 @@ export default function LearningPathDetail() {
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
+      setDashboardData(null);
       try {
         if (learningPaths.length === 0) {
           await fetchLearningPaths();
@@ -44,11 +46,7 @@ export default function LearningPathDetail() {
   const path = learningPaths.find((p) => p.id === id);
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LoadingSpinner />
-      </View>
-    );
+    return <LoadingSpinner fullScreen message="Loading learning path..." />;
   }
 
   if (!path) {

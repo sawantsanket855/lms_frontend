@@ -21,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { useCourseStore } from '../../../src/store/courseStore';
 import { LoadingSpinner } from '../../../src/components/LoadingSpinner';
+import { toTitleCase } from '../../../src/utils/format';
 
 export default function UserManagementScreen() {
     const router = useRouter();
@@ -72,7 +73,7 @@ export default function UserManagementScreen() {
                 <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
-                <Text style={styles.userName}>{item.name}</Text>
+                <Text style={styles.userName}>{toTitleCase(item.name)}</Text>
                 <Text style={styles.userEmail}>{item.email}</Text>
             </View>
             <View style={[styles.roleBadge, item.role === 'admin' ? styles.adminBadge : styles.studentBadge]}>

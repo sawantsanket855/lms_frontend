@@ -13,6 +13,10 @@ interface AuthState {
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string; bio?: string; interests?: string[] }) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, token: string, password: string) => Promise<void>;
+  sendOTP: (email: string) => Promise<void>;
+  loginWithOTP: (email: string, otp: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -102,6 +106,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.setItem('user', JSON.stringify(response.data));
     } catch (error: any) {
       throw new Error(error.response?.data?.detail || 'Update failed');
+    }
+  },
+
+  forgotPassword: async (email: string) => {
+    try {
+      await api.post('/auth/forgot-password', { email });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Request failed');
+    }
+  },
+
+  resetPassword: async (email: string, token: string, password: string) => {
+    try {
+      await api.post('/auth/reset-password', { email, token, password });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Reset failed');
+    }
+  },
+
+  sendOTP: async (email: string) => {
+    try {
+      await api.post('/auth/send-otp', { email });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'OTP send failed');
+    }
+  },
+
+  loginWithOTP: async (email: string, otp: string) => {
+    try {
+      const response = await api.post('/auth/login-otp', { email, otp });
+      const { access_token, user } = response.data;
+      
+      await AsyncStorage.setItem('token', access_token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      
+      set({ user, token: access_token, isAuthenticated: true });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'OTP login failed');
     }
   },
 }));

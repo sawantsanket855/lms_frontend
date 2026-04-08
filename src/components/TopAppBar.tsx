@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, ShieldCheck, LogOut, ChevronDown } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { useRouter } from 'expo-router';
+import { toTitleCase } from '../utils/format';
 
 export const TopAppBar: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -23,7 +24,7 @@ export const TopAppBar: React.FC = () => {
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.leftSection}>
-          <Text style={styles.appName}>PLSRD-LMS</Text>
+          <Text style={styles.appName}>LMS-PLSRD</Text>
         </View>
         <View style={styles.rightSection}>
           <TouchableOpacity 
@@ -40,7 +41,7 @@ export const TopAppBar: React.FC = () => {
             ) : (
               <View style={styles.userBadge}>
                 <User size={14} color="#6366f1" />
-                <Text style={styles.userName}>{user?.name || 'User'}</Text>
+                <Text style={styles.userName}>{toTitleCase(user?.name || 'User')}</Text>
                 <ChevronDown size={14} color="#6366f1" />
               </View>
             )}
@@ -61,7 +62,7 @@ export const TopAppBar: React.FC = () => {
               { top: isIos ? 100 : 60 }
             ]}>
               <View style={styles.menuHeader}>
-                <Text style={styles.menuUser}>{user?.name || 'User'}</Text>
+                <Text style={styles.menuUser}>{toTitleCase(user?.name || 'User')}</Text>
                 <Text style={styles.menuEmail}>{user?.email}</Text>
               </View>
               <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>

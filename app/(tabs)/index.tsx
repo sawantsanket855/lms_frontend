@@ -23,24 +23,30 @@ import { useCourseStore } from '../../src/store/courseStore';
 import { CourseCard } from '../../src/components/CourseCard';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 import { LearningPath, Course } from '../../src/types';
+import { toTitleCase } from '../../src/utils/format';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { courses, fetchCourses, fetchLearningPaths, learningPaths, fetchNotifications, notifications, isLoading } = useCourseStore();
+  const { courses, fetchCourses, fetchLearningPaths, learningPaths, fetchNotifications, notifications, isLoading: storeLoading } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const loadData = async () => {
     try {
-      await fetchCourses();
-      await fetchNotifications();
-      await fetchLearningPaths();
+      await Promise.all([
+        fetchCourses(),
+        fetchNotifications(),
+        fetchLearningPaths()
+      ]);
 
       const dashboard = await useCourseStore.getState().fetchDashboard();
       setDashboardData(dashboard);
     } catch (error) {
       console.error('Error loading home data:', error);
+    } finally {
+      setIsInitialLoading(false);
     }
   };
 
@@ -57,6 +63,10 @@ export default function HomeScreen() {
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const isAdmin = user?.role === 'admin';
 
+  if (isInitialLoading) {
+    return <LoadingSpinner fullScreen message="Loading dashboard..." />;
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -70,7 +80,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.name || 'Learner'}</Text>
+            <Text style={styles.userName}>{toTitleCase(user?.name || 'Learner')}</Text>
           </View>
           <View style={styles.headerActions}>
             {isAdmin && (
@@ -124,7 +134,7 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
-          {isLoading ? (
+          {storeLoading ? (
             <LoadingSpinner />
           ) : courses.length > 0 ? (
             <View style={styles.gridContainer}>

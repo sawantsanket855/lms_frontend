@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Circle, BookOpen, Clock } from 'lucide-react-native';
 import { useCourseStore } from '../../../src/store/courseStore';
 import { LoadingSpinner } from '../../../src/components/LoadingSpinner';
+import { toTitleCase } from '../../../src/utils/format';
 
 export default function StudentProgressScreen() {
     const router = useRouter();
@@ -88,7 +89,7 @@ export default function StudentProgressScreen() {
                 </TouchableOpacity>
                 <View>
                     <Text style={styles.title}>Student Progress</Text>
-                    <Text style={styles.subtitle}>{decodeURIComponent(uname || '')}</Text>
+                    <Text style={styles.subtitle}>{toTitleCase(decodeURIComponent(uname || ''))}</Text>
                 </View>
             </View>
 
