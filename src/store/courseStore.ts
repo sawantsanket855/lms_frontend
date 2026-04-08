@@ -103,6 +103,7 @@ interface CourseState {
   updatePathAccessStatus: (userId: string, pathId: string, status: 'active' | 'blocked') => Promise<void>;
   fetchStudentProgress: (userId: string, courseId: string) => Promise<any[]>;
   fetchPathProgress: (userId: string, pathId: string) => Promise<any[]>;
+  fetchStudentAnalytics: (userId: string) => Promise<any>;
 }
 
 export const useCourseStore = create<CourseState>((set, get) => ({
@@ -523,6 +524,11 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   fetchPathProgress: async (userId, pathId) => {
     const response = await api.get(`/admin/users/${userId}/learning-paths/${pathId}/progress`);
+    return response.data;
+  },
+
+  fetchStudentAnalytics: async (userId) => {
+    const response = await api.get(`/admin/student/${userId}/analytics`);
     return response.data;
   },
 }));

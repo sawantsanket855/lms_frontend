@@ -18,6 +18,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { getMediaUrl } from '../../../src/services/api';
 import { toTitleCase } from '../../../src/utils/format';
+import { StudentAnalytics } from '../../../src/components/StudentAnalytics';
 
 export default function CourseAssignmentScreen() {
     const router = useRouter();
@@ -41,7 +42,7 @@ export default function CourseAssignmentScreen() {
         issueCertificate
     } = useCourseStore();
 
-    const [activeTab, setActiveTab] = useState<'courses' | 'paths'>('courses');
+    const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'paths'>('overview');
     const [isLoading, setIsLoading] = useState(true);
 
     // Certificate Issuance State
@@ -393,6 +394,12 @@ export default function CourseAssignmentScreen() {
                 {/* Tabs */}
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
+                        style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+                        onPress={() => setActiveTab('overview')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Overview</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                         style={[styles.tab, activeTab === 'courses' && styles.activeTab]}
                         onPress={() => setActiveTab('courses')}
                     >
@@ -406,27 +413,33 @@ export default function CourseAssignmentScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.warningBox}>
-                    <ShieldAlert size={20} color="#f59e0b" />
-                    <Text style={styles.warningText}>
-                        {activeTab === 'courses'
-                            ? "Regular users can only access courses that are explicitly assigned to them."
-                            : "Assigning a path will automatically grant access to all courses contained within that path."}
-                    </Text>
-                </View>
-
-                <FlatList
-                    data={activeTab === 'courses' ? userCourses : userLearningPaths}
-                    keyExtractor={(item) => item.id}
-                    renderItem={activeTab === 'courses' ? renderCourseItem : renderPathItem}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Book size={48} color="#cbd5e1" />
-                            <Text style={styles.emptyText}>No {activeTab} available</Text>
+                {activeTab === 'overview' ? (
+                    <StudentAnalytics userId={id as string} />
+                ) : (
+                    <>
+                        <View style={styles.warningBox}>
+                            <ShieldAlert size={20} color="#f59e0b" />
+                            <Text style={styles.warningText}>
+                                {activeTab === 'courses'
+                                    ? "Regular users can only access courses that are explicitly assigned to them."
+                                    : "Assigning a path will automatically grant access to all courses contained within that path."}
+                            </Text>
                         </View>
-                    }
-                />
+
+                        <FlatList
+                            data={activeTab === 'courses' ? userCourses : userLearningPaths}
+                            keyExtractor={(item) => item.id}
+                            renderItem={activeTab === 'courses' ? renderCourseItem : renderPathItem}
+                            contentContainerStyle={styles.listContent}
+                            ListEmptyComponent={
+                                <View style={styles.emptyState}>
+                                    <Book size={48} color="#cbd5e1" />
+                                    <Text style={styles.emptyText}>No {activeTab} available</Text>
+                                </View>
+                            }
+                        />
+                    </>
+                )}
             </SafeAreaView>
 
             {/* Certificate Issuance Modal */}
