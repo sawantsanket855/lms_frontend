@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Plus,
   MessageSquare,
@@ -26,8 +27,10 @@ import { useCourseStore } from '../../src/store/courseStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 import { Discussion, ExpertQuestion } from '../../src/types';
+import { toTitleCase } from '../../src/utils/format';
 
 export default function CommunityScreen() {
+  const { course_id } = useLocalSearchParams<{ course_id?: string }>();
   const { user } = useAuthStore();
   const {
     discussions,
@@ -47,15 +50,15 @@ export default function CommunityScreen() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
-  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState(course_id || '');
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
 
   const loadData = async () => {
     try {
       await Promise.all([
-        fetchDiscussions(),
-        fetchExpertQuestions(),
+        fetchDiscussions(selectedCourseId || course_id),
+        fetchExpertQuestions(selectedCourseId || course_id),
         fetchCourses(),
       ]);
     } catch (error) {
@@ -66,8 +69,9 @@ export default function CommunityScreen() {
   };
 
   useEffect(() => {
+    setSelectedCourseId(course_id || '');
     loadData();
-  }, []);
+  }, [course_id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -102,9 +106,10 @@ export default function CommunityScreen() {
   const handleReply = async (discussionId: string) => {
     if (!replyContent.trim()) return;
     try {
-      await addReply(discussionId, replyContent);
+      await addReply(discussionId, replyContent, selectedCourseId);
       setReplyContent('');
-      setExpandedItem(null);
+      // Keep it expanded so the user can see their reply
+      // setExpandedItem(null); 
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -113,9 +118,9 @@ export default function CommunityScreen() {
   const handleAnswer = async (questionId: string) => {
     if (!replyContent.trim()) return;
     try {
-      await answerQuestion(questionId, replyContent);
+      await answerQuestion(questionId, replyContent, selectedCourseId);
       setReplyContent('');
-      setExpandedItem(null);
+      // setExpandedItem(null);
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -195,7 +200,7 @@ export default function CommunityScreen() {
                     </Text>
                   </View>
                   <View style={styles.cardMeta}>
-                    <Text style={styles.authorName}>{discussion.author_name}</Text>
+                    <Text style={styles.authorName}>{toTitleCase(discussion.author_name)}</Text>
                     <Text style={styles.timestamp}>
                       {new Date(discussion.created_at).toLocaleDateString()}
                     </Text>
@@ -223,7 +228,7 @@ export default function CommunityScreen() {
                   <View style={styles.repliesSection}>
                     {discussion.replies?.map((reply) => (
                       <View key={reply.id} style={styles.reply}>
-                        <Text style={styles.replyAuthor}>{reply.author_name}</Text>
+                        <Text style={styles.replyAuthor}>{toTitleCase(reply.author_name)}</Text>
                         <Text style={styles.replyContent}>{reply.content}</Text>
                       </View>
                     ))}
@@ -264,7 +269,7 @@ export default function CommunityScreen() {
                   </Text>
                 </View>
                 <View style={styles.cardMeta}>
-                  <Text style={styles.authorName}>{question.asked_by_name}</Text>
+                  <Text style={styles.authorName}>{toTitleCase(question.asked_by_name)}</Text>
                   <Text style={styles.timestamp}>
                     {new Date(question.created_at).toLocaleDateString()}
                   </Text>
@@ -296,7 +301,7 @@ export default function CommunityScreen() {
                   <View style={styles.answerHeader}>
                     <CheckCircle size={16} color="#22c55e" />
                     <Text style={styles.answeredBy}>
-                      Answered by {question.answered_by_name}
+                      Answered by {toTitleCase(question.answered_by_name || 'Expert')}
                     </Text>
                   </View>
                   <Text style={styles.answerContent}>{question.answer}</Text>

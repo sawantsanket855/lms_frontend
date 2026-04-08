@@ -17,6 +17,7 @@ import { CertificatePreview, generateCertificateHTML } from '../../../src/compon
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { getMediaUrl } from '../../../src/services/api';
+import { toTitleCase } from '../../../src/utils/format';
 import { StudentAnalytics } from '../../../src/components/StudentAnalytics';
 
 export default function CourseAssignmentScreen() {
@@ -386,7 +387,7 @@ export default function CourseAssignmentScreen() {
                     </TouchableOpacity>
                     <View>
                         <Text style={styles.title}>User Entitlements</Text>
-                        {name ? <Text style={styles.subtitle}>{name}</Text> : null}
+                        {name ? <Text style={styles.subtitle}>{toTitleCase(name)}</Text> : null}
                     </View>
                 </View>
 

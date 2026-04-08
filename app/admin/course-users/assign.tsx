@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, User, Check, Plus, ShieldAlert } from 'lucide-react-native';
 import { useCourseStore } from '../../../src/store/courseStore';
 import { LoadingSpinner } from '../../../src/components/LoadingSpinner';
+import { toTitleCase } from '../../../src/utils/format';
 
 export default function CourseUsersAssignmentScreen() {
     const router = useRouter();
@@ -43,7 +44,7 @@ export default function CourseUsersAssignmentScreen() {
             if (user.is_assigned) {
                 Alert.alert(
                     'Remove Access',
-                    `Are you sure you want to remove access to "${title}" for ${user.name}?`,
+                    `Are you sure you want to remove access to "${title}" for ${toTitleCase(user.name)}?`,
                     [
                         { text: 'Cancel', style: 'cancel' },
                         {
@@ -72,7 +73,7 @@ export default function CourseUsersAssignmentScreen() {
                 <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
-                <Text style={styles.userName}>{item.name}</Text>
+                <Text style={styles.userName}>{toTitleCase(item.name)}</Text>
                 <Text style={styles.userEmail}>{item.email}</Text>
             </View>
             <TouchableOpacity

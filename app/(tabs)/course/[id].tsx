@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -23,13 +24,14 @@ import {
   FileText,
   HelpCircle,
   Layout,
+  MessageSquare,
   ChevronRight,
   Folder,
   ClipboardList,
-  MessageSquare,
   MessageCircle,
   Award,
   Lock,
+  Info,
 } from 'lucide-react-native';
 import { useCourseStore } from '../../../src/store/courseStore';
 import { useAuthStore } from '../../../src/store/authStore';
@@ -52,9 +54,46 @@ export default function CourseDetailScreen() {
   const [progress, setProgress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  
+  // Custom Confirmation Modal State
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  } | null>(null);
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    confirmStyle?: 'destructive' | 'primary';
+    singleButton?: boolean;
+  }) => {
+    setConfirmModalConfig(config);
+    setConfirmModalVisible(true);
+  };
+
+  const showNotification = (title: string, message: string, style: 'primary' | 'destructive' = 'primary', onConfirm?: () => void) => {
+    showConfirm({
+      title,
+      message,
+      confirmText: 'OK',
+      confirmStyle: style,
+      onConfirm: onConfirm || (() => { }),
+      singleButton: true
+    });
+  };
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
+      setCourse(null);
+      setProgress(null);
       try {
         const courseData = await fetchCourse(id!);
         setCourse(courseData);
@@ -136,7 +175,7 @@ export default function CourseDetailScreen() {
           <Text style={styles.errorText}>Course not found</Text>
           <TouchableOpacity 
             style={styles.backButton} 
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+            onPress={() => router.replace('/(tabs)/courses')}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -153,7 +192,7 @@ export default function CourseDetailScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backIcon} 
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+          onPress={() => router.replace('/(tabs)/courses')}
         >
           <ArrowLeft size={24} color="#1e293b" />
         </TouchableOpacity>
@@ -233,6 +272,14 @@ export default function CourseDetailScreen() {
 
         {/* Modules - Curriculum preview */}
         <View style={styles.modulesSection}>
+          {isUnassignedStudent && (
+            <View style={styles.unassignedNotice}>
+              <AlertCircle size={20} color="#ef4444" />
+              <Text style={styles.unassignedNoticeText}>
+                course not assigned contact with admin to get access.
+              </Text>
+            </View>
+          )}
           <Text style={styles.sectionTitle}>Course Content</Text>
           <Text style={styles.moduleCount}>
             {course.modules.length} modules
@@ -246,8 +293,14 @@ export default function CourseDetailScreen() {
                 <View key={module.id} style={isUnassignedStudent ? styles.moduleCardPlain : styles.moduleCard}>
                   <TouchableOpacity
                     style={styles.moduleHeader}
-                    onPress={() => !isUnassignedStudent && toggleModuleExpansion(module.id)}
-                    activeOpacity={isUnassignedStudent ? 1 : 0.7}
+                    onPress={() => {
+                      if (isUnassignedStudent) {
+                        showNotification('Access Denied', 'cant assess content due to course not assigned', 'destructive');
+                      } else {
+                        toggleModuleExpansion(module.id);
+                      }
+                    }}
+                    activeOpacity={isUnassignedStudent ? 0.7 : 0.7}
                   >
                     <View style={styles.moduleInfo}>
                       <View style={styles.moduleNumber}>
@@ -298,6 +351,8 @@ export default function CourseDetailScreen() {
                               onPress={() => {
                                 if (sessionQuiz) {
                                   router.push(`/quiz/${sessionQuiz.id}?session_id=${sessionQuiz.session_id}`);
+                                } else if (session.quiz_id || session.content_type === 'quiz') {
+                                  router.push(`/quiz/${session.quiz_id || session.id}?session_id=${session.id}`);
                                 } else {
                                   router.push(`/session/${session.id}`);
                                 }
@@ -345,13 +400,13 @@ export default function CourseDetailScreen() {
           )}
         </View>
 
-        {/* Community Section - Only show for assigned courses */}
+        {/* Community Section - Hidden for unassigned students */}
         {!isUnassignedStudent && (
           <View style={styles.communitySection}>
             <Text style={styles.sectionTitle}>Community</Text>
             <TouchableOpacity
               style={styles.communityCard}
-              onPress={() => router.push('/(tabs)/community')}
+              onPress={() => router.push(`/(tabs)/community?course_id=${course.id}`)}
             >
               <MessageSquare size={24} color="#6366f1" />
               <Text style={styles.communityText}>Join Discussion Forum</Text>
@@ -359,7 +414,7 @@ export default function CourseDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.communityCard}
-              onPress={() => router.push('/(tabs)/community')}
+              onPress={() => router.push(`/(tabs)/community?course_id=${course.id}`)}
             >
               <MessageCircle size={24} color="#f59e0b" />
               <Text style={styles.communityText}>Ask an Expert</Text>
@@ -368,6 +423,49 @@ export default function CourseDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmIconContainer}>
+              <Info size={32} color={confirmModalConfig?.confirmStyle === 'destructive' ? "#ef4444" : "#6366f1"} />
+            </View>
+            <Text style={styles.confirmTitle}>{confirmModalConfig?.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmModalConfig?.message}</Text>
+
+            <View style={styles.confirmButtons}>
+              {!confirmModalConfig?.singleButton && (
+                <TouchableOpacity
+                  style={styles.confirmButtonCancel}
+                  onPress={() => setConfirmModalVisible(false)}
+                >
+                  <Text style={styles.confirmButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.confirmButtonConfirm,
+                  confirmModalConfig?.confirmStyle === 'destructive' && styles.confirmButtonDestructive,
+                  confirmModalConfig?.singleButton && { flex: 1 }
+                ]}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  confirmModalConfig?.onConfirm();
+                }}
+              >
+                <Text style={styles.confirmButtonConfirmText}>
+                  {confirmModalConfig?.confirmText || 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -818,5 +916,96 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 13,
     color: '#64748b',
+  },
+  unassignedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fee2e2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  unassignedNoticeText: {
+    fontSize: 14,
+    color: '#b91c1c',
+    fontWeight: '500',
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmButtonCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  confirmButtonCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  confirmButtonConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  confirmButtonDestructive: {
+    backgroundColor: '#ef4444',
+  },
+  confirmButtonConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

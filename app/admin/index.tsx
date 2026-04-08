@@ -21,6 +21,7 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Edit,
   Trash2,
   Info
@@ -30,6 +31,7 @@ import { useCourseStore } from '../../src/store/courseStore';
 import { CourseCard } from '../../src/components/CourseCard';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
 import api from '../../src/services/api';
+import { toTitleCase } from '../../src/utils/format';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -40,6 +42,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAllCourses, setShowAllCourses] = useState(false);
+  const [showAllPaths, setShowAllPaths] = useState(false);
 
   // Custom Confirmation Modal State
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -252,17 +255,35 @@ export default function AdminDashboard() {
               </View>
             ))}
           </View>
+          {courses.length > 6 && !showAllCourses && (
+            <TouchableOpacity 
+              style={styles.showMoreButton}
+              onPress={() => setShowAllCourses(true)}
+            >
+              <Text style={styles.showMoreText}>Show More Courses</Text>
+              <ChevronDown size={20} color="#6366f1" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Learning Paths - FIX APPLIED */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Learning Paths ({learningPaths.length})</Text>
-            <TouchableOpacity onPress={() => router.push('/admin/learning-path-editor')}>
-              <Plus size={24} color="#6366f1" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              {learningPaths.length > 5 && (
+                <TouchableOpacity onPress={() => setShowAllPaths(!showAllPaths)}>
+                  <Text style={{ color: '#6366f1', fontWeight: '600' }}>
+                    {showAllPaths ? 'Show Less' : 'Show More'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => router.push('/admin/learning-path-editor')}>
+                <Plus size={24} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
           </View>
-          {learningPaths.slice(0, 5).map((path) => (
+          {learningPaths.slice(0, showAllPaths ? undefined : 5).map((path) => (
             <View
               key={path.id}
               style={styles.listItem}
@@ -292,6 +313,15 @@ export default function AdminDashboard() {
               </View>
             </View>
           ))}
+          {learningPaths.length > 5 && !showAllPaths && (
+            <TouchableOpacity 
+              style={styles.showMoreButton}
+              onPress={() => setShowAllPaths(true)}
+            >
+              <Text style={styles.showMoreText}>Show More Paths</Text>
+              <ChevronDown size={20} color="#6366f1" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Recent Users */}
@@ -305,7 +335,7 @@ export default function AdminDashboard() {
                 </Text>
               </View>
               <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle}>{u.name}</Text>
+                <Text style={styles.listItemTitle}>{toTitleCase(u.name)}</Text>
                 <Text style={styles.listItemMeta}>{u.email}</Text>
               </View>
               <View
@@ -325,6 +355,13 @@ export default function AdminDashboard() {
               </View>
             </View>
           ))}
+          <TouchableOpacity 
+            style={styles.showMoreButton}
+            onPress={() => router.push('/admin/users' as any)}
+          >
+            <Text style={styles.showMoreText}>See All Students</Text>
+            <ChevronRight size={20} color="#6366f1" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -646,5 +683,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+  showMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
   },
 });

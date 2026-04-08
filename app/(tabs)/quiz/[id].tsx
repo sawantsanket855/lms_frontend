@@ -147,7 +147,10 @@ export default function QuizScreen() {
         <View style={styles.errorState}>
           <AlertCircle size={48} color="#ef4444" />
           <Text style={styles.errorText}>Quiz not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/courses')}
+          >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -200,7 +203,7 @@ export default function QuizScreen() {
 
           <TouchableOpacity
             style={styles.doneButton}
-            onPress={() => router.canGoBack() ? router.back() : router.replace(`/course/${quiz.course_id}`)}
+            onPress={() => router.replace(`/course/${quiz.course_id}`)}
           >
             <Text style={styles.doneButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -286,7 +289,7 @@ export default function QuizScreen() {
 
           <TouchableOpacity
             style={styles.doneButton}
-            onPress={() => router.canGoBack() ? router.back() : router.replace(`/course/${quiz.course_id}`)}
+            onPress={() => router.replace(`/course/${quiz.course_id}`)}
           >
             <Text style={styles.doneButtonText}>Done</Text>
           </TouchableOpacity>

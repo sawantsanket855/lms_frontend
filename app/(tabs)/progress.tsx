@@ -21,10 +21,12 @@ export default function ProgressScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
+    setIsLoading(true);
     try {
-      const data = await fetchDashboard();
-      setDashboardData(data);
-      await fetchCertificates();
+      await Promise.all([
+        fetchDashboard().then(setDashboardData),
+        fetchCertificates()
+      ]);
     } catch (error) {
       console.error('Error loading progress:', error);
     } finally {

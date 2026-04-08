@@ -21,6 +21,7 @@ import {
   ChevronRight
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
+import { toTitleCase } from '../../src/utils/format';
 
 const INTERESTS = [
   'Programming',
@@ -127,7 +128,7 @@ export default function ProfileScreen() {
               placeholderTextColor="#94a3b8"
             />
           ) : (
-            <Text style={styles.userName}>{user?.name}</Text>
+            <Text style={styles.userName}>{toTitleCase(user?.name || '')}</Text>
           )}
           <Text style={styles.userEmail}>{user?.email}</Text>
           <View style={styles.roleBadge}>
@@ -204,17 +205,30 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Save Button */}
+        {/* Save & Cancel Buttons */}
         {isEditing && (
-          <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.footerButtons}>
+            <TouchableOpacity
+              style={styles.footerCancelButton}
+              onPress={() => {
+                setIsEditing(false);
+                setName(user?.name || '');
+                setBio(user?.profile?.bio || '');
+                setSelectedInterests(user?.interests || []);
+              }}
+            >
+              <Text style={styles.footerCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
+              <Text style={styles.saveButtonText}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Menu Items */}
@@ -491,5 +505,32 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: '#94a3b8',
+  },
+  footerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  footerCancelButton: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerCancelButtonText: {
+    color: '#475569',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 2,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

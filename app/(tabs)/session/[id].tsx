@@ -58,6 +58,8 @@ export default function SessionReaderScreen() {
         ? getMediaUrl(session.media_id)
         : (session?.image_url || session?.content_url);
 
+    const isFileAvailable = !!(session?.content_url || session?.media_id || session?.image_url);
+
     // Video Player Setup
     const player = useVideoPlayer(contentUri, (player) => {
         player.loop = false;
@@ -153,6 +155,13 @@ export default function SessionReaderScreen() {
         }
     }, [id]);
 
+    // Fail-safe focus redirect for quizzes
+    useEffect(() => {
+        if (session?.content_type === 'quiz' && session?.quiz_id) {
+            router.replace(`/quiz/${session.quiz_id}`);
+        }
+    }, [session]);
+
     // Track actual time spent
     useEffect(() => {
         if (!isCompleted && isContentReady && !showResumeModal) {
@@ -245,6 +254,14 @@ export default function SessionReaderScreen() {
         return allSessions.findIndex((s) => s.id === id);
     };
 
+    const handleBack = () => {
+        if (session?.course_id) {
+            router.replace(`/course/${session.course_id}`);
+        } else {
+            router.replace('/(tabs)/courses');
+        }
+    };
+
     const handlePrevious = () => {
         const currentIndex = getCurrentSessionIndex();
         if (currentIndex > 0) {
@@ -267,8 +284,8 @@ export default function SessionReaderScreen() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (isLoading) {
-        return <LoadingSpinner fullScreen message="Loading session..." />;
+    if (isLoading || session?.content_type === 'quiz') {
+        return <LoadingSpinner fullScreen message={session?.content_type === 'quiz' ? "Opening Quiz..." : "Loading session..."} />;
     }
 
     if (!session) {
@@ -277,7 +294,7 @@ export default function SessionReaderScreen() {
                 <View style={styles.errorState}>
                     <AlertCircle size={48} color="#ef4444" />
                     <Text style={styles.errorText}>Session not found</Text>
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                    <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                         <Text style={styles.backButtonText}>Go Back</Text>
                     </TouchableOpacity>
                 </View>
@@ -296,7 +313,7 @@ export default function SessionReaderScreen() {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backIcon} onPress={handleBack}>
                     <ArrowLeft size={24} color="#1e293b" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1}>
@@ -346,6 +363,11 @@ export default function SessionReaderScreen() {
                             <Text style={styles.metaText}>
                                 {session.duration_minutes} min {session.content_type === 'video' ? 'watch' : 'listen'}
                             </Text>
+                            <Text style={styles.metaDivider}>•</Text>
+                            <FileSearch size={16} color={isFileAvailable ? "#22c55e" : "#ef4444"} />
+                            <Text style={[styles.metaText, { color: isFileAvailable ? "#22c55e" : "#ef4444", fontWeight: '600' }]}>
+                                {isFileAvailable ? 'File Available' : 'File Not Available'}
+                            </Text>
                         </View>
                     </View>
                     <View style={styles.videoWrapper}>
@@ -367,8 +389,10 @@ export default function SessionReaderScreen() {
                                 {session.duration_minutes} min read
                             </Text>
                             <Text style={styles.metaDivider}>•</Text>
-                            <FileSearch size={16} color="#64748b" />
-                            <Text style={styles.metaText}>PDF Document</Text>
+                            <FileSearch size={16} color={isFileAvailable ? "#22c55e" : "#ef4444"} />
+                            <Text style={[styles.metaText, { color: isFileAvailable ? "#22c55e" : "#ef4444", fontWeight: '600' }]}>
+                                {isFileAvailable ? 'File Available' : 'File Not Available'}
+                            </Text>
                         </View>
                     </View>
                     {Platform.OS === 'web' ? (
@@ -404,6 +428,11 @@ export default function SessionReaderScreen() {
                             <Text style={styles.metaText}>
                                 {session.duration_minutes} min view
                             </Text>
+                            <Text style={styles.metaDivider}>•</Text>
+                            <FileSearch size={16} color={isFileAvailable ? "#22c55e" : "#ef4444"} />
+                            <Text style={[styles.metaText, { color: isFileAvailable ? "#22c55e" : "#ef4444", fontWeight: '600' }]}>
+                                {isFileAvailable ? 'File Available' : 'File Not Available'}
+                            </Text>
                         </View>
                     </View>
                     <ScrollView contentContainerStyle={styles.imageWrapper}>
@@ -425,18 +454,25 @@ export default function SessionReaderScreen() {
                             <Text style={styles.metaText}>
                                 {session.duration_minutes} min read
                             </Text>
+                            <Text style={styles.metaDivider}>•</Text>
+                            <FileSearch size={16} color={isFileAvailable ? "#22c55e" : "#ef4444"} />
+                            <Text style={[styles.metaText, { color: isFileAvailable ? "#22c55e" : "#ef4444", fontWeight: '600' }]}>
+                                {isFileAvailable ? 'File Available' : 'File Not Available'}
+                            </Text>
                         </View>
 
                         {session.content_text ? (
                             <Text style={styles.articleText}>{session.content_text}</Text>
                         ) : session.content_url ? (
-                            <Text style={styles.articleText}>
-                                File available: {session.content_url}
-                            </Text>
+                            <View style={styles.emptyContent}>
+                                <FileSearch size={48} color="#22c55e" />
+                                <Text style={[styles.emptyText, { color: '#22c55e' }]}>File available</Text>
+                                <Text style={styles.metaText}>{session.content_url}</Text>
+                            </View>
                         ) : (
                             <View style={styles.emptyContent}>
-                                <FileSearch size={48} color="#cbd5e1" />
-                                <Text style={styles.emptyText}>No content available</Text>
+                                <FileSearch size={48} color="#ef4444" />
+                                <Text style={[styles.emptyText, { color: '#ef4444' }]}>File not available</Text>
                             </View>
                         )}
                     </View>

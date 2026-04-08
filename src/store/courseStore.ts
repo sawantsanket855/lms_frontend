@@ -65,12 +65,12 @@ interface CourseState {
   // Discussion actions
   fetchDiscussions: (courseId?: string) => Promise<void>;
   createDiscussion: (courseId: string, title: string, content: string) => Promise<Discussion>;
-  addReply: (discussionId: string, content: string) => Promise<void>;
+  addReply: (discussionId: string, content: string, courseId?: string) => Promise<void>;
 
   // Expert Q&A actions
   fetchExpertQuestions: (courseId?: string) => Promise<void>;
   askQuestion: (courseId: string, question: string) => Promise<ExpertQuestion>;
-  answerQuestion: (questionId: string, answer: string) => Promise<void>;
+  answerQuestion: (questionId: string, answer: string, courseId?: string) => Promise<void>;
 
   // Certificate actions
   fetchCertificates: () => Promise<void>;
@@ -364,9 +364,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return response.data;
   },
 
-  addReply: async (discussionId, content) => {
+  addReply: async (discussionId, content, courseId) => {
     await api.post(`/discussions/${discussionId}/reply`, { content });
-    await get().fetchDiscussions();
+    await get().fetchDiscussions(courseId);
   },
 
   fetchExpertQuestions: async (courseId) => {
@@ -384,9 +384,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return response.data;
   },
 
-  answerQuestion: async (questionId, answer) => {
+  answerQuestion: async (questionId, answer, courseId) => {
     await api.post(`/expert-questions/${questionId}/answer`, { answer });
-    await get().fetchExpertQuestions();
+    await get().fetchExpertQuestions(courseId);
   },
 
   fetchCertificates: async () => {

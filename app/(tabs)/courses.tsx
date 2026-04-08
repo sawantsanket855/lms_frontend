@@ -19,11 +19,12 @@ const DIFFICULTIES = ['All', 'Beginner', 'Intermediate', 'Advanced'];
 
 export default function CoursesScreen() {
   const router = useRouter();
-  const { courses, fetchCourses, isLoading } = useCourseStore();
+  const { courses, fetchCourses, isLoading: storeLoading } = useCourseStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const loadData = async () => {
     try {
@@ -32,6 +33,8 @@ export default function CoursesScreen() {
       setDashboardData(dashboard);
     } catch (error) {
       console.error('Error loading courses data:', error);
+    } finally {
+      setIsInitialLoading(false);
     }
   };
 
@@ -55,6 +58,10 @@ export default function CoursesScreen() {
     await loadData();
     setRefreshing(false);
   };
+
+  if (isInitialLoading) {
+    return <LoadingSpinner fullScreen message="Loading courses..." />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -125,7 +132,7 @@ export default function CoursesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {isLoading ? (
+        {storeLoading ? (
           <LoadingSpinner />
         ) : (dashboardData?.course_stats || []).length > 0 ? (
           <View style={styles.gridContainer}>

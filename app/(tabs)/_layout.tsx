@@ -12,7 +12,8 @@ export default function TabLayout() {
     <>
       <TopAppBar />
       <Tabs
-      screenOptions={{
+        backBehavior="history"
+        screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#94a3b8',
