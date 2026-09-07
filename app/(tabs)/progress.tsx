@@ -11,10 +11,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Book, CheckCircle, Clock, Award, Eye } from 'lucide-react-native';
 import { useCourseStore } from '../../src/store/courseStore';
+import { useAuthStore } from '../../src/store/authStore';
 import { LoadingSpinner } from '../../src/components/LoadingSpinner';
+import { StudentAnalytics } from '../../src/components/StudentAnalytics';
 
 export default function ProgressScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const { fetchDashboard, fetchCertificates, certificates } = useCourseStore();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,48 +105,17 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* Course Progress */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Course Progress</Text>
-          {dashboardData?.course_stats?.length > 0 ? (
-            dashboardData.course_stats.map((stat: any) => (
-              <TouchableOpacity
-                key={stat.course_id}
-                style={styles.progressCard}
-                onPress={() => router.push(`/course/${stat.course_id}`)}
-              >
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressTitle}>{stat.course_title}</Text>
-                </View>
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${stat.progress_percentage}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.progressModules}>
-                  {stat.completed_modules || 0} of {stat.total_modules || 0} modules completed
-                </Text>
-              </TouchableOpacity>
-            ))
-          ) : (
+        {/* Enhanced Analytics */}
+        {user?.id ? (
+          <StudentAnalytics userId={user.id} scrollEnabled={false} />
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Analytics</Text>
             <View style={styles.emptyState}>
-              <Book size={48} color="#cbd5e1" />
-              <Text style={styles.emptyTitle}>No courses started</Text>
-              <Text style={styles.emptyText}>
-                Start learning to track your progress
-              </Text>
-              <TouchableOpacity
-                style={styles.exploreButton}
-                onPress={() => router.push('/(tabs)/courses')}
-              >
-                <Text style={styles.exploreButtonText}>Explore Courses</Text>
-              </TouchableOpacity>
+              <Text style={styles.emptyText}>User not found</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Certificates */}
         {certificates.length > 0 && (

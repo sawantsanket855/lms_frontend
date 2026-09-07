@@ -6,9 +6,10 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 interface Props {
   userId: string;
+  scrollEnabled?: boolean;
 }
 
-export const StudentAnalytics: React.FC<Props> = ({ userId }) => {
+export const StudentAnalytics: React.FC<Props> = ({ userId, scrollEnabled = true }) => {
   const { fetchStudentAnalytics } = useCourseStore();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -49,8 +50,13 @@ export const StudentAnalytics: React.FC<Props> = ({ userId }) => {
 
   const { course_progress, session_progress, quiz_analytics, activity, learning_paths } = data;
 
+  const ContentWrapper = scrollEnabled ? ScrollView : View;
+  const wrapperProps = scrollEnabled 
+    ? { style: styles.container, contentContainerStyle: styles.content }
+    : { style: styles.nestedContainer };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ContentWrapper {...wrapperProps}>
       
       {/* Activity & Streak */}
       <View style={styles.row}>
@@ -195,13 +201,17 @@ export const StudentAnalytics: React.FC<Props> = ({ userId }) => {
       )}
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+    </ContentWrapper>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  nestedContainer: {
+    padding: 16,
     backgroundColor: '#f8fafc',
   },
   content: {
